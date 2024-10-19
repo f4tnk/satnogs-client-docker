@@ -9,7 +9,7 @@ else
   grsat-wrapper.sh start "$@"
 fi
 satdump.sh start "$@"
-meteor.sh start "$@"
+#meteor.sh start "$@"
 if [[ "${GPIO_ENABLE^^}" =~ (TRUE|YES|1) ]]; then
   gpio.py -f "${2}"
 fi
