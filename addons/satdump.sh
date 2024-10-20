@@ -54,6 +54,7 @@ if [ "${CMD^^}" == "START" ]; then
               esac
               OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
           ;;
+         
           *"HRPT"*) # Mode HRPT
               OPT="live noaa_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
           ;;
@@ -61,18 +62,26 @@ if [ "${CMD^^}" == "START" ]; then
         esac
       ;;
       "44387" | "57166" | "59051" | "40069") # METEOR-M N2-2 # METEOR-M N2-3 # METEOR-M N2-4 # METEOR-M N2
-          case "$SATNAME" in 
-            *"2-1"*)  SATNUM="M2-1"
-            ;;
-            *"2-2"*)  SATNUM="M2-2"
-            ;;
-            *"2-3"*)  SATNUM="M2-3"
-            ;;
-            *"2-4"*)  SATNUM="M2-4"
-            ;;
-            *) echo "Satdump : METEOR satellite number ${SATNUM} not found"
-          esac
-          OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+        case "$MODE" in 
+          *"LRPT"*) # Mode LRPT
+              case "$SATNAME" in 
+                *"2-1"*)  SATNUM="M2-1"
+                ;;
+                *"2-2"*)  SATNUM="M2-2"
+                ;;
+                *"2-3"*)  SATNUM="M2-3"
+                ;;
+                *"2-4"*)  SATNUM="M2-4"
+                ;;
+                *) echo "Satdump : METEOR satellite number ${SATNUM} not found"
+              esac
+              OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+          
+          *"HRPT"*) # Mode LRPT
+              OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
+          ;;
+          *) echo "$PRG Mode Satellite METEOR not supported"
+        esac
       ;;
       "38771" | "43689") # METOP-B AHRPT (1701.3MHz)
           OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
