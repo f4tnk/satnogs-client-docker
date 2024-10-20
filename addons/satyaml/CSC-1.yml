@@ -1,0 +1,13 @@
+name: CSC-1
+norad: 99040
+data:
+  &tlm ax25 telemetry:
+    telemetry: ax25
+transmitters:
+  1k2 BPSK AX.25 G3RUH downlink:
+    frequency: 401.175e+6
+    modulation: BPSK
+    baudrate: 1200
+    framing: AX.25 G3RUH
+    data:
+    - *tlm

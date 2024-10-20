@@ -1,0 +1,22 @@
+name: NIGHTJAR
+norad: 98859
+data:
+  &ax25 AX.25 Telemetry:
+    telemetry: ax25
+  &endurosat Endurosat Telemetry:
+     unknown
+transmitters:
+  9k6 FSK AX.25 downlink:
+    frequency: 435.350e+6
+    modulation: FSK
+    baudrate: 9600
+    framing: AX.25 G3RUH
+    data:
+    - *ax25
+  9k6 FSK Endurosat downlink:
+    frequency: 435.350e+6
+    modulation: FSK
+    baudrate: 9600
+    framing: Endurosat
+    data:
+    - *endurosat

@@ -1,0 +1,14 @@
+name: DORA
+norad: 98911
+data:
+  &tlm Telemetry:
+    unknown
+transmitters:
+  9k6 FSK downlink:
+    frequency: 436.825e+6
+    modulation: FSK
+    baudrate: 9600
+    deviation: 3800
+    framing: BINAR-2
+    data:
+    - *tlm

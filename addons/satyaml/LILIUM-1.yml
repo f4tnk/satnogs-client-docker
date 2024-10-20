@@ -1,0 +1,16 @@
+name: LILIUM-1
+alternative_names:
+  - IRIS-E
+norad: 58467
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  2k4 BPSK AX.25 G3RUH downlink:
+    frequency: 436.886e+6
+    modulation: BPSK
+    baudrate: 2400
+    framing: AX.25 G3RUH
+    data:
+    - *tlm
+
