@@ -1,0 +1,15 @@
+#!/bin/bash
+# SATNOGS_PRE_OBSERVATION_SCRIPT="satnogs-pre {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}}"
+
+bandscan.sh stop
+direwolf.sh stop
+if [[ "${GRSAT_NEW^^}" =~ (TRUE|YES|1) ]]; then
+  grsat.py start "$@"
+else
+  grsat-wrapper.sh start "$@"
+fi
+satdump.sh start "$@"
+#meteor.sh start "$@"
+if [[ "${GPIO_ENABLE^^}" =~ (TRUE|YES|1) ]]; then
+  gpio.py -f "${2}"
+fi
