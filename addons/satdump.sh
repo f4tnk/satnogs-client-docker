@@ -2,7 +2,7 @@
 if [[ ! "${SATDUMP_ENABLE^^}" =~ (TRUE|YES|1) ]]; then exit; fi
 set -eu
 
-# {command} {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}}
+# {command} {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}
 CMD="$1"     # $1 [start|stop]
 ID="$2"      # $2 observation ID
 FREQ="$3"    # $3 frequency
@@ -10,6 +10,7 @@ TLE="$4"     # $4 used tle's
 DATE="$5"    # $5 timestamp Y-m-dTH-M-S
 BAUD="$6"    # $6 baudrate
 SCRIPT="$7"  # $7 script name, satnogs_bpsk.py
+MODE="$8"    # $8 mode FM, FSK
 
 PRG="SatDump:"
 : "${SATNOGS_APP_PATH:=/tmp/.satnogs}"
@@ -37,19 +38,27 @@ if [ "${CMD^^}" == "START" ]; then
   fi
   OPT=""
   SATNUM=""
-  echo "$PRG running at $SAMP sps on $SATNAME"
+  echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
   case "$NORAD" in
       "25338" | "28654" | "33591") # NOAA 15 # NOAA 18 # NOAA 19
-          case "$SATNAME" in 
-            *"15"*)  SATNUM="15"
-            ;;
-            *"18"*)  SATNUM="18"
-            ;;
-            *"19"*)  SATNUM="19"
-            ;;
-            *) echo "Satdump : NOAA satellite number ${SATNUM} not found"
-          esac
-          OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
+        case "$MODE" in 
+          *"APT"*) # Mode APT
+              case "$SATNAME" in 
+                *"15"*)  SATNUM="15"
+                ;;
+                *"18"*)  SATNUM="18"
+                ;;
+                *"19"*)  SATNUM="19"
+                ;;
+                *) echo "Satdump : NOAA satellite number ${SATNUM} not found"
+              esac
+              OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
+          ;;
+          *"HRPT"*) # Mode HRPT
+              OPT="live noaa_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
+          ;;
+          *) echo "$PRG Mode Satellite NOAA not supported"
+        esac
       ;;
       "44387" | "57166" | "59051" | "40069") # METEOR-M N2-2 # METEOR-M N2-3 # METEOR-M N2-4 # METEOR-M N2
           case "$SATNAME" in 
@@ -68,8 +77,7 @@ if [ "${CMD^^}" == "START" ]; then
       "38771" | "43689") # METOP-B AHRPT (1701.3MHz)
           OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
       ;;
-      *) 
-        echo "$PRG Satellite not supported"
+      *) echo "$PRG Satellite not supported"
       ;;
   esac
 
