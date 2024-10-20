@@ -234,7 +234,7 @@ if __name__ == "__main__":
     if len(argv) != 8:
         LOGGER.error(
             "Wrong number of arguments, expected: "
-            "<start|stop> {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}}"
+            "<start|stop> {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}}"
         )
         exit(0)
     GrSat(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]).main()
