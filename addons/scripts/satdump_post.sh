@@ -44,7 +44,7 @@ if [ -s "$OUT" ]; then
   echo "----------------------------------------------------"
  
   image_count=0
-  images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
+  images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
   find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
       for image in "${images_upload[@]}"; do
           if [[ "$file" == *"$image"* ]]; then
@@ -52,10 +52,10 @@ if [ -s "$OUT" ]; then
               file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}.png"
               
               if mv "$file" "$file_dest"; then
-                  echo "$PRG The image $(basename "$file") was transferred to the Satnogs network"
+                  echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
                   ((image_count++))
               else
-                  echo "$PRG Error transferring the image $file"
+                  echo "$PRG Error transferring the image $(basename "$file")"
               fi
               
               sleep 1
@@ -71,9 +71,9 @@ if [ -s "$OUT" ]; then
           file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
           
           if mv "$file" "$file_dest"; then
-              echo "$PRG The image $file_dest was transferred to the Satnogs network"
+              echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
           else
-              echo "$PRG Error transferring the image $file"
+              echo "$PRG Error transferring the image $(basename "$file")"
           fi
           ((image_count++))
           sleep 1
