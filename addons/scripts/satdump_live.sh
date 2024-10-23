@@ -123,18 +123,19 @@ if [ "${CMD^^}" == "STOP" ]; then
         sleep 2
       else
         echo "$PRG The image processing process is completed."
+        rm -f "$PID"
         break
       fi
     done
 
     if [ $elapsed -ge $timeout ]; then
-      echo "$PRG Error - The process ($PID_number) exceeds the allowable time  --> Kill process and stop script !!!"
-      kill -9 $PID_number 
+      echo "$PRG Error - The process ($PID_number) exceeds the allowable time  --> Force kill satdump process and stop script !!!"
+      kill -9 $PID_number
+      rm -f "$PID"
       exit 0
     fi
 
     echo "$PRG The observation and image processing process are now complete!"
-    rm -f "$PID"
  
     if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
       echo "$PRG Remove log $LOG"
