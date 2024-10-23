@@ -37,14 +37,8 @@ if [ -s "$OUT" ]; then
   hour=$(date "+%H")
   mkdir -p "${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}"
 
-  echo "------------------$PRG $OUT------------------------"
-  a=$(find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n")
-  echo $a
-  echo "$(ls -al $OUT)"
-  echo "----------------------------------------------------"
- 
   image_count=0
-  images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
+  images_upload=("avhrr_3_rgb_Cloud_Top_IR_map.png" "avhrr_3_rgb_MCIR_Rain_map.png" "avhrr_3_rgb_MCIR_map.png" "avhrr_3_rgb_MSA_map.png")
   find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
       for image in "${images_upload[@]}"; do
           if [[ "$file" == *"$image"* ]]; then
@@ -56,10 +50,8 @@ if [ -s "$OUT" ]; then
                   ((image_count++))
               else
                   echo "$PRG Error transferring the image $(basename "$file")"
-              fi
-              
+              fi 
               sleep 1
-              break
           fi
       done
   done
@@ -72,10 +64,10 @@ if [ -s "$OUT" ]; then
           
           if mv "$file" "$file_dest"; then
               echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
+              ((image_count++))
           else
               echo "$PRG Error transferring the image $(basename "$file")"
           fi
-          ((image_count++))
           sleep 1
       done
   fi
