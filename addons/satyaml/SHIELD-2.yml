@@ -1,0 +1,14 @@
+name: SHIELD-2
+norad: 43850
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  9k6 G3RUH FSK downlink:
+    frequency: 400.250e+6
+    modulation: FSK
+    baudrate: 9600
+    deviation: 2400
+    framing: AX.25 G3RUH
+    data:
+    - *tlm

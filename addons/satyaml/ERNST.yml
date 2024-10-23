@@ -1,0 +1,13 @@
+name: ERNST
+norad: 98854
+data:
+  &tlm Unknown telemetry:
+    unknown
+transmitters:
+  4k8 FSK AX100 ASM+Golay downlink:
+    frequency: 401.100e+6
+    modulation: FSK
+    baudrate: 4800
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm

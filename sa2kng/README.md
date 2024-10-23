@@ -1,4 +1,4 @@
-# The SA2KNG collection of branches
+# The SA2KNG collection of branches : update satdump f4tnk
 
 ## Intro
 This is intended to be a collection image of my work that has not yet been merged into upstream.<br>

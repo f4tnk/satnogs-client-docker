@@ -1,0 +1,10 @@
+name: VIOLET
+norad: 98910
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  9k6 BPSK AX.25 G3RUH downlink:
+    frequency: 436.830e+6
+    modulation: BPSK
+    baudrate: 9600

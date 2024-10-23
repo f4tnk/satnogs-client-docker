@@ -1,0 +1,16 @@
+name: MOVE-II
+norad: 43780
+data:
+  &tlm unknown telemetry:
+    unknown
+transmitters:
+  12k5 BPSK AX.25 downlink:
+    frequency: 145.950e+6
+    modulation: BPSK
+    baudrate: 12500
+    framing: CCSDS Concatenated
+    precoding: differential
+    RS basis: conventional
+    frame size: 1024
+    data:
+    - *tlm

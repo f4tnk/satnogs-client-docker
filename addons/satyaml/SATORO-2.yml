@@ -1,0 +1,13 @@
+name: SATORO-2
+norad: 98827
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  2k4 BPSK AX.25 G3RUH downlink:
+    frequency: 400.425e+6
+    modulation: BPSK
+    baudrate: 2400
+    framing: AX.25 G3RUH
+    data:
+    - *tlm

@@ -166,6 +166,10 @@ COPY satyaml/* /target/usr/lib/python3/dist-packages/satellites/satyaml/
 COPY --chown=satnogs-client:satnogs-client direwolf.conf /target/etc/
 COPY --chown=satnogs-client:satnogs-client sat.cfg /target/$SATNOGS_CLIENT_VARSTATEDIR/.gr_satellites/sat.cfg
 COPY --chown=satnogs-client:satnogs-client satdump_cfg.json /target/$SATNOGS_CLIENT_VARSTATEDIR/.config/satdump/satdump_cfg.json
+# No activate, If use sa2kngs.f4tnk-satdump-beta git repo
+#COPY --chown=satnogs-client:satnogs-client ./observer/observer.py /target/usr/local/lib/python3.9/dist-packages/satnogsclient/observer
+#COPY --chown=satnogs-client:satnogs-client ./radio/flowgraphs.py /target/usr/local/lib/python3.9/dist-packages/satnogsclient/radio
+
 # Don't rely on repository file permissions, COPY --chmod requires BuildKit
 RUN chmod 0755 /target/usr/bin/*
 

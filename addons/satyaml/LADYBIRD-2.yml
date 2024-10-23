@@ -1,0 +1,26 @@
+name: LADYBIRD-2
+norad: 43837
+data:
+  &tlm Unknown telemetry:
+    unknown
+  &csp CSP telemetry:
+    telemetry: csp
+transmitters:
+  2k4 FSK AX100 ASM+Golay downlink:
+    frequency: 401.605e+6
+    modulation: FSK
+    baudrate: 2400
+    deviation: 600
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm
+    - *csp
+  4k8 FSK AX100 ASM+Golay downlink:
+    frequency: 401.605e+6
+    modulation: FSK
+    baudrate: 4800
+    deviation: 1200
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm
+    - *csp
