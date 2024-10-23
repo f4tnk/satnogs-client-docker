@@ -69,8 +69,11 @@ if [ -s "$OUT" ]; then
 fi
 
 image_number=$(find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | wc -l)
-echo "$PRG All images ($image_number) have been transferred to the Satnogs network !"
-
+if [ "$image_number" -ne 0 ]; then
+    echo "$PRG All images ($image_number) have been transferred to the Satnogs network!"
+else
+    echo "$PRG No images were found to transfer."
+fi
 
 if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
   echo "$PRG Remove output files $OUT"

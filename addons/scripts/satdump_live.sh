@@ -114,16 +114,26 @@ if [ "${CMD^^}" == "STOP" ]; then
     PID_number="$(cat "$PID")"
     echo "$PRG Stopping observation $ID - $SATNAME - Process $PID_number"
     kill $PID_number 2>/dev/null
-    if ps -p $PID_number > /dev/null; then
-        echo "$PRG Waiting for the image processing process to complete..."
-        wait $PID_number 
+
+    timeout=120 
+    # Wait end process and zombie process with watchdog
+    for (( elapsed=0; elapsed<timeout; elapsed+=2 )); do
+      if ps -p $pid > /dev/null && [ -d /proc/$pid ]; then   
+        echo "$PRG Waiting for the image processing process ($PID_number)to complete..."
+        sleep 2
+      else
         echo "$PRG The image processing process is completed."
-    else
-        echo "$PRG The image processing process is completed."
+        break
+      fi
+    done
+
+    if [ $elapsed -ge $timeout ]; then
+      echo "$PRG Error - The process ($PID_number) exceeds the allowable time  --> Kill process and stop script !!!"
+      kill -9 $PID_number 
+      exit 0
     fi
-    echo "$PRG The observation process is now complete !"
 
-
+    echo "$PRG The observation and image processing process are now complete!"
     rm -f "$PID"
  
     if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
