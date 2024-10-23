@@ -44,6 +44,7 @@ if [ -s "$OUT" ]; then
   echo "----------------------------------------------------"
  
   image_count=0
+  images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
   find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
       for image in "${images_upload[@]}"; do
           if [[ "$file" == *"$image"* ]]; then

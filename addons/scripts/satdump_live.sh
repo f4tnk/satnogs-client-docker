@@ -56,7 +56,6 @@ if [ "${CMD^^}" == "START" ]; then
               esac
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
-              images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
           ;;
          
           *"HRPT"*) # Mode HRPT
@@ -115,7 +114,7 @@ if [ "${CMD^^}" == "START" ]; then
   fi
 fi
 
-if [ "${CMD^^}" == "STOP" ]; then
+if [ "${CMD^^}" = "STOP" ]; then
   if [ -f "$PID" ]; then
     PID_number="$(cat "$PID")"
     echo "$PRG Stopping observation $ID - $SATNAME - Process $PID_number"
