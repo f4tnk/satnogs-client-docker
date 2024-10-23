@@ -52,7 +52,7 @@ if [ -s "$OUT" ]; then
               file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}.png"
               
               if mv "$file" "$file_dest"; then
-                  echo "$PRG The image $file_dest was transferred to the Satnogs network"
+                  echo "$PRG The image $(basename "$file") was transferred to the Satnogs network"
                   ((image_count++))
               else
                   echo "$PRG Error transferring the image $file"
