@@ -115,10 +115,10 @@ if [ "${CMD^^}" == "STOP" ]; then
     echo "$PRG Stopping observation $ID - $SATNAME - Process $PID_number"
     kill $PID_number 2>/dev/null
 
+    # Waiting for process to terminate and zombie process to terminate with watchdog
     timeout=120 
-    # Wait end process and zombie process with watchdog
     for (( elapsed=0; elapsed<timeout; elapsed+=2 )); do
-      if ps -p $pid > /dev/null && [ -d /proc/$pid ]; then   
+      if ps -p $PID_number > /dev/null && [ -d /proc/$PID_number]; then   
         echo "$PRG Waiting for the image processing process ($PID_number)to complete..."
         sleep 2
       else
