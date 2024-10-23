@@ -38,25 +38,23 @@ if [ -s "$OUT" ]; then
   mkdir -p "${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}"
 
   echo "------------------$PRG $OUT------------------------"
-  a=$(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n")
+  a=$(find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n")
   echo $a
   echo "$(ls -al $OUT)"
- 
+  echo "----------------------------------------------------"
+
   images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
   find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | while read -r file; do 
-    echo "$PRG File $file"
-      for image in "${images_upload[@]}"; do
-        echo "$PRG test image $image"
-        if [[ $file == *"$image"* ]]; then
-          echo "$PRG $OUT image send $file"
-          DATE_OBS=$(date +"%Y-%d-%mT%H-%M-%S")
-          file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
-          mv $file $file_dest
-          echo "$PRG Image $file_dest move successful completed"
-          sleep 1
-          break
-        fi
-      done
+    for image in "${images_upload[@]}"; do
+       if [[ $file == *"$image"* ]]; then
+         DATE_OBS=$(date +"%Y-%d-%mT%H-%M-%S")
+         file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
+         mv $file $file_dest
+         echo "$PRG The image $file_dest was transferred to the Satnogs network"
+         sleep 1
+         break
+       fi
+     done
   done
   
   if [ ! "${MODE^^}" == "APT" ]; then
@@ -64,24 +62,22 @@ if [ -s "$OUT" ]; then
       DATE_OBS=$(date +"%Y-%d-%mT%H-%M-%S")
       file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
       mv $file $file_dest
-      echo "$PRG Move image $file_dest successful to satnogs data directory"
+      echo "$PRG The image $file_dest was transferred to the Satnogs network"
       sleep 1
     done
   fi
-  echo "$PRG End post for $SATNAME"
 fi
+
+image_number=$(find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | wc -l)
+echo "$PRG All images ($image_number) have been transferred to the Satnogs network !"
+
 
 if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
-  echo "$PRG Remove out files $OUT"
+  echo "$PRG Remove output files $OUT"
   #rm -rf "$OUT"
 else
-  echo "$PRG Keeping output, you need to purge them manually or restarted the container."
+  echo "$PRG Keeping output files $OUT, you need to purge them manually or restarted the container."
 fi
 
+#Securing data transfer to disk
 sync
-
-  echo "-------------sleep-----$PRG $OUT--------sleep----------------"
-  sleep 15
-  a=$(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n")
-  echo $a
-  echo "$(ls -al $OUT)"

@@ -112,20 +112,28 @@ fi
 if [ "${CMD^^}" == "STOP" ]; then
   if [ -f "$PID" ]; then
     PID_number="$(cat "$PID")"
+    echo "$PRG Stopping observation $ID - $SATNAME - Process $PID_number"
     kill $PID_number 2>/dev/null
+    if ps -p $PID_number > /dev/null; then
+        echo "$PRG Waiting for the image processing process to complete..."
+        wait $PID_number 
+        echo "$PRG The image processing process is completed."
+    else
+        echo "$PRG The image processing process is completed."
+    fi
+    echo "$PRG The observation process is now complete !"
+
+
     rm -f "$PID"
  
     if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
       echo "$PRG Remove log $LOG"
       #rm -rf "$LOG"
     else
-      echo "$PRG Keeping logs, you need to purge them manually or restarted the container."
+      echo "$PRG Keeping logs file $LOG, you need to purge them manually or restarted the container."
     fi
   fi
 fi
 
+#Securing data transfer to disk
 sync
-OUT="/tmp/satdump_10440265"
-a=$(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n")
-echo $a
-echo "$(ls -al $OUT)"
