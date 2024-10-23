@@ -43,7 +43,7 @@ if [ -s "$OUT" ]; then
       for image in "${images_upload[@]}"; do
           if [[ "$file" == *"$image"* ]]; then
               DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-              file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}.png"
+              file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_${image}"
               
               if mv "$file" "$file_dest"; then
                   echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
@@ -60,7 +60,7 @@ if [ -s "$OUT" ]; then
   if [ ! "${MODE^^}" = "APT" ]; then
       find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
           DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-          file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
+          file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}_${file}"
           
           if mv "$file" "$file_dest"; then
               echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
