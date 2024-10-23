@@ -13,7 +13,7 @@ SCRIPT="$7"  # $7 script name, satnogs_bpsk.py
 MODE="$8"    # $8 mode FM, FSK
 
 PRG="SatDump:"
-: "${SATNOGS_APP_PATH:=/tmp}"
+: "${SATNOGS_APP_PATH:=/tmp/.satnogs}"
 : "${SATNOGS_OUTPUT_PATH:=/tmp/.satnogs/data}"
 : "${UDP_DUMP_PORT:=57356}"
 : "${SATDUMP_KEEPLOGS:=yes}"
@@ -42,44 +42,55 @@ if [ -s "$OUT" ]; then
   echo $a
   echo "$(ls -al $OUT)"
   echo "----------------------------------------------------"
-
-  images_upload=("avhrr_3_rgb_10.8µm_Thermal_IR.png" "avhrr_3_rgb_MCIR_Rain_(Uncalibrated)_map.png" "avhrr_3_rgb_MSA_(Uncalibrated)_map.png" "avhrr_3_rgb_Cloud_Top_IR_map.png")
-  find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | while read -r file; do 
-    for image in "${images_upload[@]}"; do
-       if [[ $file == *"$image"* ]]; then
-         DATE_OBS=$(date +"%Y-%d-%mT%H-%M-%S")
-         file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
-         mv $file $file_dest
-         echo "$PRG The image $file_dest was transferred to the Satnogs network"
-         sleep 1
-         break
-       fi
-     done
+ 
+  image_count=0
+  find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
+      for image in "${images_upload[@]}"; do
+          if [[ "$file" == *"$image"* ]]; then
+              DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+              file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}.png"
+              
+              if mv "$file" "$file_dest"; then
+                  echo "$PRG The image $file_dest was transferred to the Satnogs network"
+                  ((image_count++))
+              else
+                  echo "$PRG Error transferring the image $file"
+              fi
+              
+              sleep 1
+              break
+          fi
+      done
   done
-  
-  if [ ! "${MODE^^}" == "APT" ]; then
-    find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | while read -r file; do 
-      DATE_OBS=$(date +"%Y-%d-%mT%H-%M-%S")
-      file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
-      mv $file $file_dest
-      echo "$PRG The image $file_dest was transferred to the Satnogs network"
-      sleep 1
-    done
+
+
+  if [ ! "${MODE^^}" = "APT" ]; then
+      find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
+          DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+          file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}.png"
+          
+          if mv "$file" "$file_dest"; then
+              echo "$PRG The image $file_dest was transferred to the Satnogs network"
+          else
+              echo "$PRG Error transferring the image $file"
+          fi
+          ((image_count++))
+          sleep 1
+      done
   fi
 fi
 
-image_number=$(find $OUT -type f \( -iname "*.png" -o -iname "*.jpg" \) -printf "%p\n" | wc -l)
-if [ "$image_number" -ne 0 ]; then
-    echo "$PRG All images ($image_number) have been transferred to the Satnogs network!"
+if [ "$image_count" -ne 0 ]; then
+    echo "$PRG All images ($image_count) have been transferred to the Satnogs network!"
 else
     echo "$PRG No images were found to transfer."
 fi
 
-if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
-  echo "$PRG Remove output files $OUT"
-  #rm -rf "$OUT"
+if [ ! "${SATDUMP_KEEPLOGS^^}" = "YES" ]; then
+    echo "$PRG Remove output files $OUT"
+    #rm -rf "$OUT"
 else
-  echo "$PRG Keeping output files $OUT, you need to purge them manually or restarted the container."
+    echo "$PRG Keeping output files $OUT, you need to purge them manually or restart the container."
 fi
 
 #Securing data transfer to disk

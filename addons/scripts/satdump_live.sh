@@ -13,7 +13,7 @@ SCRIPT="$7"  # $7 script name, satnogs_bpsk.py
 MODE="$8"    # $8 mode FM, FSK
 
 PRG="SatDump:"
-: "${SATNOGS_APP_PATH:=/tmp}"
+: "${SATNOGS_APP_PATH:=/tmp/.satnogs}"
 : "${SATNOGS_OUTPUT_PATH:=/tmp/.satnogs/data}"
 : "${UDP_DUMP_PORT:=57356}"
 : "${SATDUMP_KEEPLOGS:=yes}"
@@ -51,6 +51,8 @@ if [ "${CMD^^}" == "START" ]; then
                 *"19"*)  SATNUM="19"
                 ;;
                 *) echo "Satdump : NOAA satellite number ${SATNUM} not found"
+                break
+                ;;
               esac
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
@@ -77,6 +79,8 @@ if [ "${CMD^^}" == "START" ]; then
                 "59051")  SATNUM="M2-4"
                 ;;
                 *) echo "Satdump : METEOR satellite number ${SATNUM} not found"
+                break
+                ;;
               esac
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
@@ -86,6 +90,7 @@ if [ "${CMD^^}" == "START" ]; then
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
           ;;
           *) echo "$PRG Mode Satellite METEOR not supported"
+          ;;
         esac
       ;;
       "38771" | "43689") # METOP-B AHRPT (1701.3MHz) METOP-C AHRPT (1701.3MHz)
@@ -95,6 +100,7 @@ if [ "${CMD^^}" == "START" ]; then
               OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
             ;;
             *) echo "$PRG Mode Satellite METOP not supported"
+            ;;
           esac
       ;;
       *) echo "$PRG Satellite not supported"
@@ -118,22 +124,22 @@ if [ "${CMD^^}" == "STOP" ]; then
     # Waiting for process to terminate and zombie process to terminate with watchdog
     timeout=120 
     for (( elapsed=0; elapsed<timeout; elapsed+=2 )); do
-      if ps -p $PID_number > /dev/null && [ -d /proc/$PID_number]; then   
-        echo "$PRG Waiting for the image processing process ($PID_number)to complete..."
-        sleep 2
-      else
-        echo "$PRG The image processing process is completed."
-        rm -f "$PID"
-        break
-      fi
-    done
+        if ps -p $PID_number > /dev/null && [ -d /proc/$PID_number ]; then   
+            echo "$PRG Waiting for the image processing process ($PID_number) to complete..."
+            sleep 2
+        else
+            echo "$PRG The image processing process is completed."
+            rm -f "$PID"
+            break
+        fi
 
-    if [ $elapsed -ge $timeout ]; then
-      echo "$PRG Error - The process ($PID_number) exceeds the allowable time  --> Force kill satdump process and stop script !!!"
-      kill -9 $PID_number
-      rm -f "$PID"
-      exit 0
-    fi
+        if [ $elapsed -ge $timeout ]; then
+            echo "$PRG Error - The process ($PID_number) exceeds the allowable time --> Force kill satdump process and stop script !!!"
+            kill -9 $PID_number
+            rm -f "$PID"
+            exit 0
+        fi
+    done
 
     echo "$PRG The observation and image processing process are now complete!"
  
