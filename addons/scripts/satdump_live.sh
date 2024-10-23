@@ -27,7 +27,7 @@ UNIXTD="${3:-$(date -u +%s)}" # date -d "2024-04-25T14:07:37" -u +%s
 SATNAME=$(echo "$TLE" | jq .tle0 | sed -e 's/ /_/g' | sed -e 's/[^A-Za-z0-9._-]//g')
 NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
 
-if [ "${CMD^^}" == "START" ]; then
+if [ "${CMD^^}" = "START" ]; then
   if [ -z "$UDP_DUMP_HOST" ]; then
 	  echo "$PRG WARNING! UDP_DUMP_HOST not set, no data will be sent to the demod"
   fi
