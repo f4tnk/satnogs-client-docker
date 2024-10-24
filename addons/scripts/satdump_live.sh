@@ -50,8 +50,8 @@ if [ "${CMD^^}" = "START" ]; then
                 ;;
                 *"19"*)  SATNUM="19"
                 ;;
-                *) echo "Satdump : NOAA satellite number ${SATNUM} not found"
-                break
+                *)  echo "Satdump : NOAA satellite number ${SATNUM} not found"
+                    exit 0
                 ;;
               esac
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
@@ -77,8 +77,8 @@ if [ "${CMD^^}" = "START" ]; then
                 ;;
                 "59051")  SATNUM="M2-4"
                 ;;
-                *) echo "Satdump : METEOR satellite number ${SATNUM} not found"
-                break
+                *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
+                    exit 0
                 ;;
               esac
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
@@ -89,6 +89,7 @@ if [ "${CMD^^}" = "START" ]; then
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
           ;;
           *) echo "$PRG Mode Satellite METEOR not supported"
+             exit 0 
           ;;
         esac
       ;;
@@ -98,7 +99,8 @@ if [ "${CMD^^}" = "START" ]; then
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
             ;;
-            *) echo "$PRG Mode Satellite METOP not supported"
+            *)  echo "$PRG Mode Satellite METOP not supported"
+                exit 0
             ;;
           esac
       ;;
