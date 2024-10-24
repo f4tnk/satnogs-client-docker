@@ -22,7 +22,7 @@ LOG="$SATNOGS_APP_PATH/satdump_$ID.log"
 OUT="$SATNOGS_APP_PATH/satdump_$ID"
 PID="$SATNOGS_APP_PATH/satdump_$SATNOGS_STATION_ID.pid"
 UNIXTD="${3:-$(date -u +%s)}" # date -d "2024-04-25T14:07:37" -u +%s
-
+image_count=0
 
 SATNAME=$(echo "$TLE" | jq .tle0 | sed -e 's/ /_/g' | sed -e 's/[^A-Za-z0-9._-]//g')
 NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
@@ -30,46 +30,52 @@ NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
 if [ -s "$OUT" ]; then
   echo "$PRG Processing data $OUT to network"
   # find images, rename/move to ${SATNOGS_OUTPUT_PATH}/data_<obsid>_YYYY-MM-DDTHH-MM-SS.png
-  # data_obs/2024/10/19/17/10422188/data_10422188_2024-10-19T17-27-17.png
   year=$(date +"%Y")
   month=$(date +"%m")
   day=$(date "+%d")
   hour=$(date "+%H")
   mkdir -p "${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}"
 
-  image_count=0
-  images_upload=("avhrr_3_rgb_Cloud_Top_IR_map.png" "avhrr_3_rgb_MCIR_Rain_map.png" "avhrr_3_rgb_MCIR_map.png" "avhrr_3_rgb_MSA_map.png")
+  
+    noaa_apt_images_upload=(
+        "avhrr_3_rgb_Cloud_Top_IR_map.png"
+        "avhrr_3_rgb_MCIR_Rain_map.png"
+        "avhrr_3_rgb_MCIR_map.png"
+        "avhrr_3_rgb_MSA_map.png"
+        "avhrr_3_rgb_10.8µm_Thermal_IR.png"
+    )
   find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
-      for image in "${images_upload[@]}"; do
-          if [[ "$file" == *"$image"* ]]; then
-              DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-              file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_${image}"
+    echo "Image generated : $(basename "$file")"
+    for image in "${noaa_apt_images_upload[@]}"; do
+        if [[ "$(basename "$file")" == "$image" ]]; then
+            DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+            file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_${image}"
               
-              if mv "$file" "$file_dest"; then
-                  echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
-                  ((image_count++))
-              else
-                  echo "$PRG Error transferring the image $(basename "$file")"
-              fi 
-              sleep 1
-          fi
-      done
-  done
+            if mv "$file" "$file_dest"; then
+                echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
+                ((image_count++))
+            else
+                echo "$PRG Error transferring the image $(basename "$file")"
+            fi 
+            sleep 1
+        fi
+    done
+done
 
 
-  if [ ! "${MODE^^}" = "APT" ]; then
-      find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
-          DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-          file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}_${file}"
+if [ ! "${MODE^^}" = "APT" ]; then
+    find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
+        DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+        file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}_$(basename "$file")"
           
-          if mv "$file" "$file_dest"; then
-              echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
-              ((image_count++))
-          else
-              echo "$PRG Error transferring the image $(basename "$file")"
-          fi
-          sleep 1
-      done
+        if mv "$file" "$file_dest"; then
+            echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
+            ((image_count++))
+        else
+            echo "$PRG Error transferring the image $(basename "$file")"
+        fi
+        sleep 1
+    done
   fi
 fi
 
