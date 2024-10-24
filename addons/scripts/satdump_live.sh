@@ -62,7 +62,8 @@ if [ "${CMD^^}" = "START" ]; then
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live noaa_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
           ;;
-          *) echo "$PRG Mode Satellite NOAA not supported"
+          *)  echo "$PRG Mode Satellite NOAA not supported"
+              exit 0
         esac
       ;;
       "44387" | "57166" | "59051" | "40069") # METEOR-M N2-2 # METEOR-M N2-3 # METEOR-M N2-4 # METEOR-M N2
@@ -104,7 +105,8 @@ if [ "${CMD^^}" = "START" ]; then
             ;;
           esac
       ;;
-      *) echo "$PRG Satellite not supported"
+      *)  echo "$PRG Satellite not supported"
+          exit 0
       ;;
   esac
 

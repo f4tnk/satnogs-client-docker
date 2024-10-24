@@ -37,60 +37,59 @@ if [ -s "$OUT" ]; then
   mkdir -p "${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}"
 
   
-    noaa_apt_images_upload=(
-        "avhrr_3_rgb_Cloud_Top_IR_map.png"
-        "avhrr_3_rgb_MCIR_Rain_map.png"
-        "avhrr_3_rgb_MCIR_map.png"
-        "avhrr_3_rgb_MSA_map.png"
-        "avhrr_3_rgb_10.8µm_Thermal_IR.png"
+  noaa_apt_images_upload=(
+      "avhrr_3_rgb_Cloud_Top_IR_map.png"
+      "avhrr_3_rgb_MCIR_Rain_map.png"
+      "avhrr_3_rgb_MCIR_map.png"
+      "avhrr_3_rgb_MSA_map.png"
+      "avhrr_3_rgb_10.8µm_Thermal_IR.png"
+      "avhrr_3_rgb_NO_enhancement_map.png"
     )
-  find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
-    echo "Image generated : $(basename "$file")"
-    for image in "${noaa_apt_images_upload[@]}"; do
-        if [[ "$(basename "$file")" == "$image" ]]; then
+    find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
+        echo "Image generated : $(basename "$file")"
+        for image in "${noaa_apt_images_upload[@]}"; do
+            echo "Image TEST : $(basename "$file")" ======== "$image"
+            if [[ $(basename "$file") == "$image" ]]; then
+                echo "Image transferred OK : $image !!!!!!!! $(basename "$file")"
+                DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+                file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$(basename "$file")"
+                    echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
+                    ((image_count++))
+                else
+                    echo "$PRG Error transferring the image $(basename "$file")"
+                sleep 1
+            fi
+        done
+    done
+
+
+    if [ ! "${MODE^^}" = "APT" ]; then
+        find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
             DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-            file_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_${image}"
-              
+            file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}_$(basename "$file")"
+            
             if mv "$file" "$file_dest"; then
                 echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
                 ((image_count++))
             else
                 echo "$PRG Error transferring the image $(basename "$file")"
-            fi 
+            fi
             sleep 1
-        fi
-    done
-done
+        done
+    fi
 
+    if [ "$image_count" -ne 0 ]; then
+        echo "$PRG All images ($image_count) have been transferred to the Satnogs network!"
+    else
+        echo "$PRG No images were found to transfer."
+    fi
 
-if [ ! "${MODE^^}" = "APT" ]; then
-    find "$OUT" -type f \( -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do 
-        DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-        file_dest="${SATNOGS_OUTPUT_PATH}/${year}/${month}/${day}/${hour}/${ID}/data_${ID}_${DATE_OBS}_$(basename "$file")"
-          
-        if mv "$file" "$file_dest"; then
-            echo "$PRG The image $(basename "$file_dest") was transferred to the Satnogs network"
-            ((image_count++))
-        else
-            echo "$PRG Error transferring the image $(basename "$file")"
-        fi
-        sleep 1
-    done
-  fi
+    if [ ! "${SATDUMP_KEEPLOGS^^}" = "YES" ]; then
+        echo "$PRG Remove output files $OUT"
+        #rm -rf "$OUT"
+    else
+        echo "$PRG Keeping output files $OUT, you need to purge them manually or restart the container."
+    fi
 fi
-
-if [ "$image_count" -ne 0 ]; then
-    echo "$PRG All images ($image_count) have been transferred to the Satnogs network!"
-else
-    echo "$PRG No images were found to transfer."
-fi
-
-if [ ! "${SATDUMP_KEEPLOGS^^}" = "YES" ]; then
-    echo "$PRG Remove output files $OUT"
-    #rm -rf "$OUT"
-else
-    echo "$PRG Keeping output files $OUT, you need to purge them manually or restart the container."
-fi
-
 #Securing data transfer to disk
 sync
