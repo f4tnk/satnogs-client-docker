@@ -1,0 +1,13 @@
+name: OBJECT-K
+norad: 59809
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  2k4 USP FSK downlink:
+    frequency: 401.108e+6
+    modulation: FSK
+    baudrate: 2400
+    framing: USP
+    data:
+    - *tlm

@@ -1,0 +1,24 @@
+name: GAINDESAT-1A
+norad: 98853
+data:
+  &tlm Unknown telemetry:
+    unknown
+  &tlmc CSP telemetry:
+    telemetry: csp
+transmitters:
+  2k4 FSK AX100 ASM+Golay downlink:
+    frequency: 401.800e+6
+    modulation: FSK
+    baudrate: 2400
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm
+    - *tlmc
+  4k8 FSK AX100 ASM+Golay downlink:
+    frequency: 401.800e+6
+    modulation: FSK
+    baudrate: 4800
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm
+    - *tlmc

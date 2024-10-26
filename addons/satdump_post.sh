@@ -1,5 +1,5 @@
 #!/bin/bash
-if [[ ! "${SATDUMP_ENABLE^^}" =~ (TRUE|YES|1) ]]; then exit; fi
+if [[ ! "${SATDUMP_ENABLE^^}" =~ (TRUE|YES|1) ]]; then exit 0; fi
 
 # {command} {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}
 CMD="$1"     # $1 [start|stop]
@@ -32,42 +32,97 @@ if [ -s "$OUT" ]; then
     month=$(date +"%m")
     day=$(date "+%d")
     hour=$(date "+%H")
- 
+ #------------------------NOAA APT---------------------------------#
     noaa_apt_images_upload=(
         "avhrr_3_rgb_Cloud_Top_IR"
         "avhrr_3_rgb_MCIR"
         "avhrr_3_rgb_MCIR_Rain"
         "avhrr_3_rgb_MSA"
         "avhrr_3_rgb_10.8µm_Thermal_IR"
-        "avhrr_3_rgb_NO_enhancement"
         "avhrr_3_rgb_Day_Cloud_Convection"
         "avhrr_3_rgb_NO_enhancement"
         )
-
 
     noaa_images_satdump=()
     while IFS= read -r -d '' file; do
         noaa_images_satdump+=("$file") 
     done < <(find "$OUT" -type f -iname "*.png" -print0)
 
-    for file in "${noaa_images_satdump[@]}"; do
-        basename=$(basename "$file") 
-        echo "basename $basename"
+    for image in "${noaa_apt_images_upload[@]}"; do     
+        
         DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-        basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
-        for image in "${noaa_apt_images_upload[@]}"; do     
-            echo "Test $basename image $image"
-            if [[ "$basename" == "$image_map.png" || "$basename" == "$image.png" || "$basename" == "$image_(Uncalibrated)_map.png" || "$basename" == "$image_(Uncalibrated).png" ]]; then
+        block="0"
+
+        for file in "${noaa_images_satdump[@]}"; do
+            basename=$(basename "$file") 
+            file_name=$(echo "$basename" | cut -f1 -d '.')
+            basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
+            if [[ "$basename" == "$image""_map.png" ]]; then
                 if cp "$file" "$basename_dest"; then
                    ((image_count++))
                     echo "$PRG The image $basename_dest was transferred to the Satnogs network"
                 else
                     echo "$PRG Error transferring the image $file"
                 fi
+                block="1"
                 sleep 1
                 break
             fi
         done
+        if [[ "$block" != "1" ]]; then
+            for file in "${noaa_images_satdump[@]}"; do
+                basename=$(basename "$file") 
+                file_name=$(echo "$basename" | cut -f1 -d '.')
+                basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
+                if [[ "$basename" == "$image"".png"  ]]; then
+                    if cp "$file" "$basename_dest"; then
+                        ((image_count++))
+                        echo "$PRG The image $basename_dest was transferred to the Satnogs network"
+                    else
+                        echo "$PRG Error transferring the image $file"
+                    fi
+                    block="1"
+                    sleep 1
+                    break
+                fi
+            done
+        fi
+        if [[ "$block" != "1" ]]; then
+            for file in "${noaa_images_satdump[@]}"; do
+                basename=$(basename "$file") 
+                file_name=$(echo "$basename" | cut -f1 -d '.')
+                basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
+                if [[ "$basename" == "$image""_(Uncalibrated)_map.png" ]]; then
+                    if cp "$file" "$basename_dest"; then
+                        ((image_count++))
+                        echo "$PRG The image $basename_dest was transferred to the Satnogs network"
+                    else
+                        echo "$PRG Error transferring the image $file"
+                    fi
+                    block="1"
+                    sleep 1
+                    break
+                fi
+            done
+        fi
+        if [[ "$block" != "1" ]]; then
+            for file in "${noaa_images_satdump[@]}"; do
+                basename=$(basename "$file") 
+                file_name=$(echo "$basename" | cut -f1 -d '.')
+                basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
+                if [[ "$basename" == "$image""_(Uncalibrated).png" ]]; then
+                    if cp "$file" "$basename_dest"; then
+                        ((image_count++))
+                        echo "$PRG The image $basename_dest was transferred to the Satnogs network"
+                    else
+                        echo "$PRG Error transferring the image $file"
+                    fi
+                    block="1"
+                    sleep 1
+                    break
+                fi
+            done
+        fi
     done
 
     if [ "$image_count" -ne 0 ]; then
