@@ -67,7 +67,6 @@ if [ -s "$OUT" ]; then
                         echo "$PRG Error transferring the image $file"
                     fi
                     block="1"
-                    sleep 1
                     break
                 fi
             done
@@ -84,7 +83,6 @@ if [ -s "$OUT" ]; then
                             echo "$PRG Error transferring the image $file"
                         fi
                         block="1"
-                        sleep 1
                         break
                     fi
                 done
@@ -102,7 +100,6 @@ if [ -s "$OUT" ]; then
                             echo "$PRG Error transferring the image $file"
                         fi
                         block="1"
-                        sleep 1
                         break
                     fi
                 done
@@ -120,7 +117,6 @@ if [ -s "$OUT" ]; then
                             echo "$PRG Error transferring the image $file"
                         fi
                         block="1"
-                        sleep 1
                         break
                     fi
                 done
@@ -133,7 +129,7 @@ if [ -s "$OUT" ]; then
             echo "$PRG No images were found to transfer."
         fi
     else
-        #Other satellite & mode
+        #------------Other satellite & mode---------------------
         DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
         block="0"
 
@@ -149,7 +145,6 @@ if [ -s "$OUT" ]; then
                 echo "$PRG Error transferring the image $file"
             fi
             block="1"
-            sleep 1
         done
     fi
 
