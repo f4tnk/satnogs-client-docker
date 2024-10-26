@@ -33,30 +33,29 @@ if [ -s "$OUT" ]; then
     month=$(date +"%m")
     day=$(date "+%d")
     hour=$(date "+%H")
+
+    images_satdump=()
+    while IFS= read -r -d '' file; do
+        images_satdump+=("$file") 
+    done < <(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpeg" -o -iname "*.jpg" \) -print0)
+
  
-    if if [[ "$MODE" == "APT" ]]; then
+    if [[ "$MODE" == "APT" ]]; then
     #------------------------NOAA APT---------------------------------#
         noaa_apt_images_upload=(
-            "avhrr_3_rgb_Cloud_Top_IR"
             "avhrr_3_rgb_MCIR"
             "avhrr_3_rgb_MCIR_Rain"
-            "avhrr_3_rgb_MSA"
+            "avhrr_3_rgb_Cloud_Top_IR"
             "avhrr_3_rgb_10.8µm_Thermal_IR"
             "avhrr_3_rgb_Day_Cloud_Convection"
-            "avhrr_3_rgb_NO_enhancement"
-            )
-
-        noaa_images_satdump=()
-        while IFS= read -r -d '' file; do
-            noaa_images_satdump+=("$file") 
-        done < <(find "$OUT" -type f -iname "*.png" -print0)
+        )
 
         for image in "${noaa_apt_images_upload[@]}"; do     
             
             DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
             block="0"
 
-            for file in "${noaa_images_satdump[@]}"; do
+            for file in "${images_satdump[@]}"; do
                 basename=$(basename "$file") 
                 file_name=$(echo "$basename" | cut -f1 -d '.')
                 basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
@@ -73,7 +72,7 @@ if [ -s "$OUT" ]; then
                 fi
             done
             if [[ "$block" != "1" ]]; then
-                for file in "${noaa_images_satdump[@]}"; do
+                for file in "${images_satdump[@]}"; do
                     basename=$(basename "$file") 
                     file_name=$(echo "$basename" | cut -f1 -d '.')
                     basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
@@ -91,7 +90,7 @@ if [ -s "$OUT" ]; then
                 done
             fi
             if [[ "$block" != "1" ]]; then
-                for file in "${noaa_images_satdump[@]}"; do
+                for file in "${images_satdump[@]}"; do
                     basename=$(basename "$file") 
                     file_name=$(echo "$basename" | cut -f1 -d '.')
                     basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
@@ -109,7 +108,7 @@ if [ -s "$OUT" ]; then
                 done
             fi
             if [[ "$block" != "1" ]]; then
-                for file in "${noaa_images_satdump[@]}"; do
+                for file in "${images_satdump[@]}"; do
                     basename=$(basename "$file") 
                     file_name=$(echo "$basename" | cut -f1 -d '.')
                     basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
@@ -133,8 +132,26 @@ if [ -s "$OUT" ]; then
         else
             echo "$PRG No images were found to transfer."
         fi
-    fi
+    else
+        #Other satellite & mode
+        DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
+        block="0"
 
+        for file in "${images_satdump[@]}"; do
+            basename=$(basename "$file") 
+            file_name=$(echo "$basename" | cut -f1 -d '.')
+            basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
+
+            if cp "$file" "$basename_dest"; then
+            ((image_count++))
+                echo "$PRG The image $basename_dest was transferred to the Satnogs network"
+            else
+                echo "$PRG Error transferring the image $file"
+            fi
+            block="1"
+            sleep 1
+        done
+    fi
 
     if [ ! "${SATDUMP_KEEPLOGS^^}" = "YES" ]; then
         echo "$PRG Remove output files $OUT"
