@@ -145,7 +145,6 @@ if [ "${CMD^^}" = "START" ]; then
                 else
                     echo "$PRG Error transferring the image $file"
                 fi
-                block="1"
             done
         fi
 
