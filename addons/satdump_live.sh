@@ -154,6 +154,3 @@ if [ "${CMD^^}" = "STOP" ]; then
     fi
   fi
 fi
-
-#Securing data transfer to disk
-sync

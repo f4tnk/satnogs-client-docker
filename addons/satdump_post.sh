@@ -156,6 +156,4 @@ if [ "${CMD^^}" = "START" ]; then
             echo "$PRG Keeping output files $OUT, you need to purge them manually or restart the container."
         fi
     fi
-    #Securing data transfer to disk
-    sync
 fi
