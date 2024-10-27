@@ -71,22 +71,32 @@ if [ "${CMD^^}" = "START" ]; then
           *"LRPT"* | *"FSK"*) # Mode LRPT
               case "$NORAD" in 
                 "40069")  SATNUM="M2"
+                          SAMP="665400"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
+                          OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+    
                 ;;
                 "44387")  SATNUM="M2-2"
+                          SAMP="665400"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
+                          SAMP="665400"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "59051")  SATNUM="M2-4"
+                          SAMP="665400"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
                     exit 0
                 ;;
               esac
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-              OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
           ;;
-          *"HRPT"*) # Mode LRPT
-              SAMP="665400"
+          *"HRPT"*) # Mode HRPT
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
           ;;
