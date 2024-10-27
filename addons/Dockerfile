@@ -34,7 +34,7 @@ RUN cd ssdv &&\
     make DESTDIR=/target install
 
 # install satnogs_gr-satellites, also implemented in grsat.py
-RUN git clone -b maint-3.8 --depth=1 https://github.com/kng/satnogs_gr-satellites.git
+RUN git clone -b maint-3.8 https://github.com/kng/satnogs_gr-satellites.git
 RUN cd satnogs_gr-satellites &&\
     make DESTDIR=/target PREFIX=/usr install
 
