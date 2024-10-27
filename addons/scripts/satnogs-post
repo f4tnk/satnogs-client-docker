@@ -8,7 +8,7 @@ else
 fi
 
 satdump_live.sh stop "$@"
-satdump_post.sh stop "$@"
+satdump_post.sh start "$@"
 #meteor.sh stop "$@"
 bandscan.sh start
 direwolf.sh start
