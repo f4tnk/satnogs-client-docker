@@ -143,6 +143,10 @@ RUN cd URESAT-1-decoder/bit-version/linux &&\
     make &&\
     install -m 755 uresat-decoder-linux-x86 /target/usr/bin
 
+# SSTV
+RUN git clone https://github.com/colaclanth/sstv.git
+RUN cd sstv && python3 setup.py install
+    
 # SatDump CLI
 RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
 RUN cd SatDump &&\

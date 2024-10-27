@@ -1,7 +1,7 @@
 #!/bin/bash
 export DOCKER_BUILDKIT=1
 TAG_IMAGE="sa2kng-f4tnk"
-TAG_CLIENT_SATNOGS="sa2kng-f4tnk"
+TAG_CLIENT_SATNOGS="1.9.2+sa2kng-f4tnk"
 TAG="sa2kng"
 REPO_ROOT="knegge"
 GNURADIO_IMAGE_TAG="3.8.2.0-satnogs"
