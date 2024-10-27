@@ -238,4 +238,4 @@ if __name__ == "__main__":
             "<start|stop> {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}}"
         )
         exit(0)   
-    GrSat(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7], argv[8]).main()
+    GrSat(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]).main()
