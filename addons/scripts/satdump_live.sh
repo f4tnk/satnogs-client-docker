@@ -86,6 +86,7 @@ if [ "${CMD^^}" = "START" ]; then
               OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --finish_processing"
           ;;
           *"HRPT"*) # Mode LRPT
+              SAMP="665400"
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
           ;;
@@ -154,6 +155,3 @@ if [ "${CMD^^}" = "STOP" ]; then
     fi
   fi
 fi
-
-#Securing data transfer to disk
-sync
