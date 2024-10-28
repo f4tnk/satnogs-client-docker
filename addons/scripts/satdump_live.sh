@@ -78,7 +78,7 @@ if [ "${CMD^^}" = "START" ]; then
                 "44387")  SATNUM="M2-2"
                           samplerate="1200000"
                           echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate--frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
                           samplerate="1200000"
