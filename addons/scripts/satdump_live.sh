@@ -71,24 +71,26 @@ if [ "${CMD^^}" = "START" ]; then
           *"LRPT"* | *"FSK"*) # Mode LRPT
               case "$NORAD" in 
                 "40069")  SATNUM="M2"
-                          samplerate="72000"
+                          samplerate="1200000"
                           echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
                           OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "44387")  SATNUM="M2-2"
-                          samplerate="72000"
+                          samplerate="1200000"
                           echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate--frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
-                          samplerate="72000"
+                          samplerate="1200000"
+                          symbolrate="72000"
                           echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --symbolrate : $symbolrate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 "59051")  SATNUM="M2-4"
-                          samplerate="72000"
+                          samplerate="1200000"
+                          symbolrate="80000"
                           echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --symbolrate : $symbolrate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
                 ;;
                 *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
                     exit 0
@@ -136,7 +138,7 @@ if [ "${CMD^^}" = "STOP" ]; then
     kill $PID_number 2>/dev/null
 
     # Waiting for process to terminate and zombie process to terminate with watchdog
-    timeout=120 
+    timeout=480
     for (( elapsed=0; elapsed<timeout; elapsed+=2 )); do
         if ps -p $PID_number > /dev/null && [ -d /proc/$PID_number ]; then   
             echo "$PRG Waiting for the image processing process ($PID_number) to complete..."
