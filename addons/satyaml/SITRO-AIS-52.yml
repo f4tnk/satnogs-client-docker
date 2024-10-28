@@ -1,0 +1,13 @@
+name: SITRO-AIS-52
+norad: 59063
+data:
+  &tlm Telemetry:
+    telemetry: sitro_ais
+transmitters:
+  GMSK USP 2400:
+    frequency: 401.145e+6
+    modulation: GMSK
+    baudrate: 2400
+    framing: USP
+    data:
+      - *tlm
