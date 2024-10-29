@@ -163,7 +163,7 @@ if [ "${CMD^^}" = "START" ]; then
 
         if [ ! "${SATDUMP_KEEPLOGS^^}" = "YES" ]; then
             echo "$PRG Remove output files $OUT"
-            #rm -rf "$OUT"
+            rm -rf "$OUT"
         else
             echo "$PRG Keeping output files $OUT, you need to purge them manually or restart the container."
         fi

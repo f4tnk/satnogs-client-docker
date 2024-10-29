@@ -35,7 +35,7 @@ if [ "${CMD^^}" = "START" ]; then
 
   OPT=""
   SATNUM=""
-  echo "$PRG search $SATNAME with mode $MODE"
+  echo "$PRG search $SATNAME with mode $MODE at symbolerate $BAUD"
   case "$NORAD" in
       "25338" | "28654" | "33591") # NOAA 15 # NOAA 18 # NOAA 19
         case "$MODE" in 
@@ -51,7 +51,7 @@ if [ "${CMD^^}" = "START" ]; then
                     exit 0
                 ;;
               esac
-              BAUD="50000" #Satnogs DB no BAUD define for APT
+              BAUD="50000" # Satnogs DB no BAUD define for APT
               sdrpp_noise_reduction="false"
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at baud $BAUD"
               OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --sdrpp_noise_reduction $sdrpp_noise_reduction --dc_block $DC_BLOCK --satellite_number $SATNUM --start_timestamp $UNIXTD --finish_processing"
@@ -155,7 +155,7 @@ if [ "${CMD^^}" = "STOP" ]; then
  
     if [ ! "${SATDUMP_KEEPLOGS^^}" == "YES" ]; then
       echo "$PRG Remove log $LOG"
-      #rm -rf "$LOG"
+      rm -rf "$LOG"
     else
       echo "$PRG Keeping logs file $LOG, you need to purge them manually or restarted the container."
     fi
