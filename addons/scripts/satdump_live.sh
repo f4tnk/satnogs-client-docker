@@ -52,7 +52,7 @@ if [ "${CMD^^}" = "START" ]; then
                 ;;
               esac
               BAUD="50000" #Satnogs DB no BAUD define for APT
-              $sdrpp_noise_reduction="false"
+              sdrpp_noise_reduction="false"
               echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at baud $BAUD"
               OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --sdrpp_noise_reduction $sdrpp_noise_reduction --dc_block $DC_BLOCK --satellite_number $SATNUM --start_timestamp $UNIXTD --finish_processing"
           ;;
