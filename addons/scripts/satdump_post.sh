@@ -58,6 +58,7 @@ if [ "${CMD^^}" = "START" ]; then
                     "avhrr_3_rgb_Day_Cloud_Convection"
                     "avhrr_3_rgb_NO_enhancement"
                 )
+            fi
 
             for image in "${images_upload[@]}"; do     
                 
