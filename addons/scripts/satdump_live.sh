@@ -70,21 +70,21 @@ if [ "${CMD^^}" = "START" ]; then
           *"LRPT"* | *"FSK"*) # Mode LRPT
               case "$NORAD" in 
                 "40069")  SATNUM="M2"  
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
                           OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "44387")  SATNUM="M2-2"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
                           rs_usecheck="false"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD  --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "59051")  SATNUM="M2-4"
                           rs_usecheck="false"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --dc_block true--finish_processing"
                 ;;
                 *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
@@ -93,7 +93,7 @@ if [ "${CMD^^}" = "START" ]; then
               esac
           ;;
           *"HRPT"*) # Mode HRPT
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+              echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --start_timestamp $UNIXTD --dc_block $DC_BLOCK --finish_processing"
           ;;
           *) echo "$PRG Mode Satellite METEOR not supported"
@@ -104,7 +104,7 @@ if [ "${CMD^^}" = "START" ]; then
       "38771" | "43689") # METOP-B AHRPT (1701.3MHz) METOP-C AHRPT (1701.3MHz)
           case "$MODE" in 
             *"AHRPT"*) # Mode AHRPT
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+              echo "$PRG running at $SATNOGS_RX_SAMP_RATE srs on $SATNAME with mode $MODE at synbolrate $BAUD"
               OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --finish_processing"
             ;;
             *)  echo "$PRG Mode Satellite METOP not supported"
