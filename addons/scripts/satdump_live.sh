@@ -12,6 +12,7 @@ BAUD="$6"    # $6 baudrate
 SCRIPT="$7"  # $7 script name, satnogs_bpsk.py
 MODE="$8"    # $8 mode FM, FSK
 
+
 PRG="SatDump:"
 : "${SATNOGS_APP_PATH:=/tmp/.satnogs}"
 : "${SATNOGS_OUTPUT_PATH:=/tmp/.satnogs/data}"
@@ -22,7 +23,7 @@ LOG="$SATNOGS_APP_PATH/satdump_$ID.log"
 OUT="$SATNOGS_APP_PATH/satdump_$ID"
 PID="$SATNOGS_APP_PATH/satdump_$SATNOGS_STATION_ID.pid"
 UNIXTD="${3:-$(date -u +%s)}" # date -d "2024-04-25T14:07:37" -u +%s
-
+DC_BLOCK="true"
 
 SATNAME=$(echo "$TLE" | jq .tle0 | sed -e 's/ /_/g' | sed -e 's/[^A-Za-z0-9._-]//g')
 NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
@@ -31,11 +32,7 @@ if [ "${CMD^^}" = "START" ]; then
   if [ -z "$UDP_DUMP_HOST" ]; then
 	  echo "$PRG WARNING! UDP_DUMP_HOST not set, no data will be sent to the demod"
   fi
-  SAMP=$(find_samp_rate.py "$BAUD" "$SCRIPT")
-  if [ -z "$SAMP" ]; then
-    SAMP=66560
-    echo "$PRG WARNING! find_samp_rate.py did not return valid sample rate!"
-  fi
+
   OPT=""
   SATNUM=""
   echo "$PRG search $SATNAME with mode $MODE"
@@ -54,13 +51,15 @@ if [ "${CMD^^}" = "START" ]; then
                     exit 0
                 ;;
               esac
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-              OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --satellite_number $SATNUM --start_timestamp $UNIXTD --sdrpp_noise_reduction --finish_processing"
+              BAUD="50000" #Satnogs DB no BAUD define for APT
+              $sdrpp_noise_reduction="false"
+              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at baud $BAUD"
+              OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --sdrpp_noise_reduction $sdrpp_noise_reduction --dc_block $DC_BLOCK --satellite_number $SATNUM --start_timestamp $UNIXTD --finish_processing"
           ;;
          
           *"HRPT"*) # Mode HRPT
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-              OPT="live noaa_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
+              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+              OPT="live noaa_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --dc_block $DC_BLOCK --finish_processing"
           ;;
           *)  echo "$PRG Mode Satellite NOAA not supported"
               exit 0
@@ -70,27 +69,23 @@ if [ "${CMD^^}" = "START" ]; then
         case "$MODE" in 
           *"LRPT"* | *"FSK"*) # Mode LRPT
               case "$NORAD" in 
-                "40069")  SATNUM="M2"
-                          samplerate="1200000"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                "40069")  SATNUM="M2"  
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          OPT="live meteor_m2_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "44387")  SATNUM="M2-2"
-                          samplerate="1200000"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
-                          samplerate="1200000"
-                          symbolrate="72000"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --symbolrate $symbolrate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          rs_usecheck="false"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD  --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "59051")  SATNUM="M2-4"
-                          samplerate="1200000"
-                          symbolrate="80000"
-                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $samplerate --symbolrate $symbolrate --frequency $FREQ --satellite_number $SATNUM --finish_processing"
+                          rs_usecheck="false"
+                          echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --dc_block true--finish_processing"
                 ;;
                 *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
                     exit 0
@@ -98,9 +93,8 @@ if [ "${CMD^^}" = "START" ]; then
               esac
           ;;
           *"HRPT"*) # Mode HRPT
-              SAMP="665400"
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-              OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --finish_processing"
+              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+              OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --start_timestamp $UNIXTD --dc_block $DC_BLOCK --finish_processing"
           ;;
           *) echo "$PRG Mode Satellite METEOR not supported"
              exit 0 
@@ -110,8 +104,8 @@ if [ "${CMD^^}" = "START" ]; then
       "38771" | "43689") # METOP-B AHRPT (1701.3MHz) METOP-C AHRPT (1701.3MHz)
           case "$MODE" in 
             *"AHRPT"*) # Mode AHRPT
-              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE"
-              OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
+              echo "$PRG running at $SAMP sps on $SATNAME with mode $MODE at synbolrate $BAUD"
+              OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SATNOGS_RX_SAMP_RATE --symbolrate $BAUD --frequency $FREQ --finish_processing"
             ;;
             *)  echo "$PRG Mode Satellite METOP not supported"
                 exit 0
