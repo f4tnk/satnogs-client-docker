@@ -41,15 +41,7 @@ if [ "${CMD^^}" = "START" ]; then
 
     
         if [[ "$MODE" == "APT" || "$MODE" == *"LRPT"* ]]; then
-            if [[ "$MODE" == *"LRPT"* ]]; then
-                images_upload=(
-                    "msu_mr_rgb_AVHRR_221_False_Color"
-                    "msu_mr_rgb_AVHRR_221_False_Color_corrected"
-                    "msu_mr_rgb_MCIR"
-                    "msu_mr_rgb_MSA"
-                    "msu_mr_3.9_µm_Shortwave_IR"
-                )
-            else #NOAA
+            if [[ "$MODE" == "APT" ]]; then
                 images_upload=(
                     "avhrr_3_rgb_MCIR"
                     "avhrr_3_rgb_MCIR_Rain"
@@ -57,6 +49,14 @@ if [ "${CMD^^}" = "START" ]; then
                     "avhrr_3_rgb_10.8µm_Thermal_IR"
                     "avhrr_3_rgb_Day_Cloud_Convection"
                     "avhrr_3_rgb_NO_enhancement"
+                )
+            else #LRPT
+                images_upload=(
+                    "msu_mr_rgb_AVHRR_221_False_Color"
+                    "msu_mr_rgb_AVHRR_221_False_Color_corrected"
+                    "msu_mr_rgb_MCIR"
+                    "msu_mr_rgb_MSA"
+                    "msu_mr_3.9_µm_Shortwave_IR"
                 )
             fi
 
