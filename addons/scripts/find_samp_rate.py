@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from sys import argv
 
-# This script takes two arguments: {{BAUD}} {{SCRIPT_NAME}}
+# This script takes two arguments: {{BAUD}} {{SCRIPT_NAME}} {{MODE}}
 # and tries to figure out the IQ sample rate
 
 
