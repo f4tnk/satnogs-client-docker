@@ -112,7 +112,7 @@ if [ "${CMD^^}" = "START" ]; then
           case "$MODE" in 
             *"AHRPT"*) # Mode AHRPT
               echo "$PRG running at $SAMP srs on $SATNAME with mode $MODE"
-              OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --finish_processing"
+              OPT="live metop_ahrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --dc_block $DC_BLOCK --frequency $FREQ --finish_processing"
             ;;
             *)  echo "$PRG Mode Satellite METOP not supported"
                 exit 0

@@ -24,10 +24,9 @@ def find_samp_rate(baudrate, script="", mode="", sps=4, audio_samp_rate=48000):
     elif "_ssb" in script:
         return find_decimation(baudrate, 2, audio_samp_rate, sps) * baudrate
     elif "LRPT" in mode:
-        if baudrate == 72000: 
-            return 2 * 72000
-        else:
-            return 2 * 80000
+            return 2 * baudrate
+    elif "HRPT" in mode:
+            return 2 * baudrate
     elif "APT" in mode:
         return 4 * 4160 * 4
     else:  # cw, fm, afsk, etc...
