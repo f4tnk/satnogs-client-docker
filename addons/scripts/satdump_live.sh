@@ -154,7 +154,7 @@ if [ "${CMD^^}" = "STOP" ]; then
             echo "$PRG Error - The process ($PID_number) exceeds the allowable time --> Force kill satdump process and stop script !!!"
             kill -9 $PID_number
             rm -f "$PID"
-            exit 0
+            exit 1
         fi
     done
 
