@@ -148,7 +148,7 @@ RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
 # GR VOLK
-RUN git clone https://github.com/gnuradio/volk.git
+RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
 RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
 
 # SatDump CLI
