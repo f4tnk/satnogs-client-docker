@@ -13,13 +13,7 @@ def find_samp_rate(baudrate, script="", mode="", sps=4, audio_samp_rate=48000):
         baudrate = 9600
     if baudrate < 1:
         baudrate = 9600
-    if "LRPT" in mode:
-            return 2 * baudrate
-    elif "HRPT" in mode:
-            return 2 * baudrate
-    elif "APT" in mode:
-        return 4 * 4160 * 4
-    elif "_bpsk" in script:
+    if "_bpsk" in script:
         return find_decimation(baudrate, 2, audio_samp_rate, sps) * baudrate
     elif "_fsk" in script:
         return max(4, find_decimation(baudrate, 2, audio_samp_rate)) * baudrate
