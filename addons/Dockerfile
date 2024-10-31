@@ -146,7 +146,11 @@ RUN cd URESAT-1-decoder/bit-version/linux &&\
 # SSTV
 RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
-    
+
+# GR VOLK
+RUN git clone https://github.com/gnuradio/volk.git
+RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
+
 # SatDump CLI
 RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
 RUN cd SatDump &&\
