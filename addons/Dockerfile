@@ -147,9 +147,6 @@ RUN cd URESAT-1-decoder/bit-version/linux &&\
 RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
-# GR VOLK
-RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
-RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
 
 # SatDump CLI
 RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
@@ -162,6 +159,10 @@ RUN cd SatDump &&\
       -DPLUGIN_SCRIPTING=ON \
       -DBUILD_TOOLS=ON &&\
     cmake --build build --target install
+
+# GR VOLK
+RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
+RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin
