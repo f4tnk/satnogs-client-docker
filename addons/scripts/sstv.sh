@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# {command} {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}
+# {command} {{ID}} {{FREQ}} {{TLE}} {{TIMESTAMP}} {{BAUD}} {{SCRIPT_NAME}} {{MODE}}
 CMD="$1"     # $1 [start|stop]
 ID="$2"      # $2 observation ID
 FREQ="$3"    # $3 frequency
@@ -28,7 +28,8 @@ NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
 
 if [ "${CMD^^}" = "START" ]; then
   if [ "$MODE" == "SSTV" ]; then
-  OPT="-d audio_file.ogg -o result.png"
+  sox -e float -t raw -r 192000 -b 32 -c 2 "$SATNOGS_APP_PATH/iq_$ID.raw" -t ogg -e float -b 32 -c 2 -r 192000 "$SATNOGS_APP_PATH/iq_$ID.ogg" 
+  OPT="-d "$SATNOGS_APP_PATH/iq_$ID.ogg" -o sstv_$ID.png"
   if [ -n "$OPT" ]; then
     mkdir -p "$OUT"
     echo "$PRG $OPT"

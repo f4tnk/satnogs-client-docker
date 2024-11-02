@@ -22,6 +22,9 @@ ARG CMAKE_BUILD_PARALLEL_LEVEL
 #    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
 #    cmake --build build --target install
 
+# install Sox
+RUN apt -y install sox 
+
 # install beesat-sdr for mobitex support
 RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/beesat-sdr.git
 RUN cd beesat-sdr/gr-tnc_nx &&\

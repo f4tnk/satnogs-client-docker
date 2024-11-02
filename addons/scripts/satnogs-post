@@ -13,3 +13,4 @@ satdump_post.sh start "$@"
 bandscan.sh start
 direwolf.sh start
 rotor-park.sh
+sstv.sh start "$@"
