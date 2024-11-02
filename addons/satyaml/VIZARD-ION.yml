@@ -1,0 +1,16 @@
+name: VIZARD-ION
+alternative_names:
+  - RS68S
+norad: 98789
+data:
+   &tlm Telemetry:
+     unknown
+transmitters:
+   9k6 FSK downlink:
+     frequency: 436.870e+6
+     modulation: FSK
+     baudrate: 9600
+     framing: GEOSCAN
+     frame size: 74
+     data:
+     - *tlm
