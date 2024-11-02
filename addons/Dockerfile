@@ -22,9 +22,6 @@ ARG CMAKE_BUILD_PARALLEL_LEVEL
 #    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
 #    cmake --build build --target install
 
-# install Sox
-RUN apt -y install sox 
-
 # install beesat-sdr for mobitex support
 RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/beesat-sdr.git
 RUN cd beesat-sdr/gr-tnc_nx &&\
@@ -150,7 +147,6 @@ RUN cd URESAT-1-decoder/bit-version/linux &&\
 RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
-
 # SatDump CLI
 RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
 RUN cd SatDump &&\
@@ -166,6 +162,8 @@ RUN cd SatDump &&\
 # GR VOLK
 RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
 RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
+
+
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin
@@ -234,6 +232,13 @@ RUN xargs -a packages.pip pip install
 # copy the files built
 COPY --from=builder /target /
 COPY --from=rust /target /
+
+# install Sox et Imagemagick
+RUN apt -qy update && \
+    apt -qy install sox && \
+    apt -qy install libpulse-dev && \
+    apt -qy install libsox-dev && \
+    apt -qy install imagemagick
 
 RUN chown -R satnogs-client:satnogs-client /usr/lib/python3/dist-packages/satellites/satyaml
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
