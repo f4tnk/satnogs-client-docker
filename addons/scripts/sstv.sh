@@ -28,7 +28,7 @@ NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
 
 if [ "${CMD^^}" = "START" ]; then
   if [[ "$MODE" =~ SSTV ]]; then
-    sox -e float -t raw -r 192000 -b 32 -c 2 "$SATNOGS_APP_PATH/iq.raw" -t ogg -e float -b 32 -c 2 -r 192000 "$SATNOGS_APP_PATH/iq_$ID.ogg" 
+    sox -e float -t raw -r 192000 -b 32 -c 2 "$SATNOGS_APP_PATH/iq.raw" -t wav -e float -b 32 -c 2 -r 192000 "$SATNOGS_APP_PATH/iq_$ID.wav" 
     OPT="-d $SATNOGS_APP_PATH/iq_$ID.ogg -o $SATNOGS_APP_PATH/sstv_$ID.png"
     if [ -n "$OPT" ]; then
       mkdir -p "$OUT"

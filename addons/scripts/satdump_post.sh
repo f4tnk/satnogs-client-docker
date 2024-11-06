@@ -68,7 +68,6 @@ if [ "${CMD^^}" = "START" ]; then
                 for file in "${images_satdump[@]}"; do
                     basename=$(basename "$file") 
                     file_name=$(echo "$basename" | cut -f1 -d '.')
-                    convert $file -rotate 180 $file
                     basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
                     if [[ "$basename" == "$image""_map.png" ]]; then
                         if cp "$file" "$basename_dest"; then
@@ -85,7 +84,6 @@ if [ "${CMD^^}" = "START" ]; then
                     for file in "${images_satdump[@]}"; do
                         basename=$(basename "$file") 
                         file_name=$(echo "$basename" | cut -f1 -d '.')
-                        convert $file -rotate 180 $file
                         basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
                         if [[ "$basename" == "$image"".png"  ]]; then
                             if cp "$file" "$basename_dest"; then
@@ -103,7 +101,6 @@ if [ "${CMD^^}" = "START" ]; then
                     for file in "${images_satdump[@]}"; do
                         basename=$(basename "$file") 
                         file_name=$(echo "$basename" | cut -f1 -d '.')
-                        convert $file -rotate 180 $file
                         basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
                         if [[ "$basename" == "$image""_(Uncalibrated)_map.png" ]]; then
                             if cp "$file" "$basename_dest"; then
@@ -121,7 +118,6 @@ if [ "${CMD^^}" = "START" ]; then
                     for file in "${images_satdump[@]}"; do
                         basename=$(basename "$file") 
                         file_name=$(echo "$basename" | cut -f1 -d '.')
-                        convert $file -rotate 180 $file
                         basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_$basename"
                         if [[ "$basename" == "$image""_(Uncalibrated).png" ]]; then
                             if cp "$file" "$basename_dest"; then
