@@ -148,11 +148,12 @@ RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
 # QtSoundModem
-RUN git clone https://github.com/colaclanth/sstv.git
-RUN cd sstv && python3 setup.py install
-RUN apt install -qy qtbase5-dev libmuparser-dev libshp-dev  libqt5serialport5-dev libfftw3-dev libpulse-dev unzip
-RUN wget "libqt5serialport5-dev libfftw3-dev libpulse-dev" -O QtSMSource.zip
-RUN unzip QtSMSource.zip && cd QtSoundModem && qmake && make && mkdir /target/usr/bin/QtSoundModem
+RUN apt install -qy qtbase5-dev libmuparser-dev libshp-dev  libqt5serialport5-dev libfftw3-dev libpulse-dev unzip qt5-qmake qtbase5-dev libasound2-dev
+RUN wget "http://www.cantab.net/users/john.wiseman/Downloads/Beta/QtSMSource.zip"
+RUN unzip QtSMSource.zip
+RUN cd QtSoundModem && qmake && make
+RUN 
+RUN mkdir /target/usr/bin/QtSoundModem
 COPY * /target/usr/bin/QtSoundModem
 
 # SatDump CLI
