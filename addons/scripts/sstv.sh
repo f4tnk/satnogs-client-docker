@@ -15,6 +15,7 @@ PRG="SSTV:"
 : "${SATNOGS_OUTPUT_PATH:=/tmp/.satnogs/data}"
 : "${UDP_DUMP_PORT:=57356}"
 : "${SATDUMP_KEEPLOGS:=yes}"
+: "${SATNOGS_REMOVE_OGG_FILES=true}"
 
 BIN=$(command -v sstv)
 LOG="$SATNOGS_APP_PATH/sstv_$ID.log"
@@ -27,11 +28,9 @@ SATNAME=$(echo "$TLE" | jq .tle0 | sed -e 's/ /_/g' | sed -e 's/[^A-Za-z0-9._-]/
 NORAD=$(echo "$TLE" | jq .tle2 | awk '{print $2}')
 
 if [ "${CMD^^}" = "START" ]; then
-  if [[ "$MODE" =~ SSTV ]]; then
-    sox -e float -t raw -r 192000 -b 32 -c 2 "$SATNOGS_APP_PATH/iq.raw" -t wav -e float -b 32 -c 2 -r 192000 "$SATNOGS_APP_PATH/iq_$ID.wav" 
-    OPT="-d $SATNOGS_APP_PATH/iq_$ID.ogg -o $SATNOGS_APP_PATH/sstv_$ID.png"
+  if [[ "${MODE,,}" =~ "sstv" ]]; then
+    OPT="-d $SATNOGS_APP_PATH/satnogs_$ID_$DATE_OBS.ogg -o $SATNOGS_APP_PATH/sstv_$ID.png"
     if [ -n "$OPT" ]; then
-      mkdir -p "$OUT"
       echo "$PRG $OPT"
       $BIN $OPT
     fi
@@ -46,6 +45,9 @@ if [ "${CMD^^}" = "START" ]; then
       basename_dest="${SATNOGS_OUTPUT_PATH}/data_${ID}_${DATE_OBS}_sstv.png"
       if cp "$SATNOGS_APP_PATH/sstv_$ID.png" "$basename_dest"; then
         echo "$PRG The image $basename_dest was transferred to the Satnogs network"
+        if [ "${SATNOGS_REMOVE_OGG_FILES^^}" = "TRUE" ]; then
+          rm "$SATNOGS_APP_PATH/sstv_$ID.png"
+        fi
       else
         echo "$PRG Error transferring the image $file"
       fi
