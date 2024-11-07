@@ -17,10 +17,10 @@ RUN mkdir -p /target/usr && rm -rf /usr/local && ln -sf /target/usr /usr/local
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 
 # install gr-satellites, this is now included in the base image
-#RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
-#RUN cd gr-satellites &&\
-#    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
-#    cmake --build build --target install
+RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
+RUN cd gr-satellites &&\
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
+    cmake --build build --target install
 
 # install beesat-sdr for mobitex support
 RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/beesat-sdr.git
@@ -147,6 +147,14 @@ RUN cd URESAT-1-decoder/bit-version/linux &&\
 RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
+# QtSoundModem
+RUN git clone https://github.com/colaclanth/sstv.git
+RUN cd sstv && python3 setup.py install
+RUN apt install -qy qtbase5-dev libmuparser-dev libshp-dev  libqt5serialport5-dev libfftw3-dev libpulse-dev unzip
+RUN wget "libqt5serialport5-dev libfftw3-dev libpulse-dev" -O QtSMSource.zip
+RUN unzip QtSMSource.zip && cd QtSoundModem && qmake && make && mkdir /target/usr/bin/QtSoundModem
+COPY * /target/usr/bin/QtSoundModem
+
 # SatDump CLI
 RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
 RUN cd SatDump &&\
@@ -162,8 +170,6 @@ RUN cd SatDump &&\
 # GR VOLK
 RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
 RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
-
-
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin
