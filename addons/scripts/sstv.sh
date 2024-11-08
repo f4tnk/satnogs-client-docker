@@ -38,10 +38,7 @@ if [ "${CMD^^}" = "START" ]; then
     OGG="${SATNOGS_APP_PATH}/satnogs_${ID}_${DATE_OBS}.ogg"
     OPT="-d \"$OGG\" -o \"$SATNOGS_APP_PATH/sstv_$ID.png\""
     echo "$PRG $OPT"
-    if [ -z "$BIN" ]; then
-      echo "$PRG Error: sstv command not found"
-      exit 1
-    fi
+    $BIN $OPT
 
     if [ -f "$SATNOGS_APP_PATH/sstv_$ID.png" ]; then
       echo "$PRG Processing data $OUT to network"
