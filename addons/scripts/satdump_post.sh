@@ -33,15 +33,14 @@ if [ "${CMD^^}" = "START" ]; then
         month=$(date +"%m")
         day=$(date "+%d")
         hour=$(date "+%H")
-
-        images_satdump=()
-        while IFS= read -r -d '' file; do
-            images_satdump+=("$file") 
-        done < <(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpeg" -o -iname "*.jpg" \) -print0)
-
     
         if [[ "$MODE" == "APT" || "$MODE" == *"LRPT"* ]]; then
             if [[ "$MODE" == "APT" ]]; then
+                images_satdump=()
+                OUT_IMG="$SATNOGS_APP_PATH/satdump_$ID"
+                while IFS= read -r -d '' file; do
+                    images_satdump+=("$file") 
+                done < <(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpeg" -o -iname "*.jpg" \) -print0)
                 images_upload=(
                     "avhrr_3_rgb_MCIR"
                     "avhrr_3_rgb_MCIR_Rain"
@@ -51,12 +50,18 @@ if [ "${CMD^^}" = "START" ]; then
                     "avhrr_3_rgb_NO_enhancement"
                 )
             else #LRPT
+                Images_satdump=()
+                OUT_IMG="$SATNOGS_APP_PATH/satdump_$ID/MSU-MR (Filled)"
+                while IFS= read -r -d '' file; do
+                    images_satdump+=("$file") 
+                done < <(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpeg" -o -iname "*.jpg" \) -print0)
+                
                 images_upload=(
-                    "msu_mr_rgb_AVHRR_221_False_Color"
                     "msu_mr_rgb_AVHRR_221_False_Color_corrected"
-                    "msu_mr_rgb_MCIR"
-                    "msu_mr_rgb_MSA"
-                    "msu_mr_3.9_µm_Shortwave_IR"
+                    "msu_mr_rgb_MCIR_corrected"
+                    "msu_mr_rgb_MSA_corrected"
+                    "msu_mr_rgb_MSU-MR_124_False_Color_corrected"
+                    "msu_mr_3.9_um_Shortwave_IR"
                 )
             fi
 
@@ -140,6 +145,11 @@ if [ "${CMD^^}" = "START" ]; then
             fi
         else
             #------------Other mode---------------------
+            OUT_IMG="$SATNOGS_APP_PATH/satdump_$ID"
+            while IFS= read -r -d '' file; do
+                images_satdump+=("$file") 
+            done < <(find "$OUT" -type f \( -iname "*.png" -o -iname "*.jpeg" -o -iname "*.jpg" \) -print0)
+
             for file in "${images_satdump[@]}"; do
                 DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
                 basename=$(basename "$file") 

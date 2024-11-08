@@ -92,7 +92,7 @@ if [ "${CMD^^}" = "START" ]; then
                           rs_usecheck="false" #Test
                           fill_missing="true"
                           echo "$PRG running at $SAMP srs on $SATNAME with mode $MODE"
-                          OPT="live meteor_m2-x_lrpt_80k $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --fill_missing $fill_missing --satellite_number $SATNUM --finish_processing"
+                          OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --fill_missing $fill_missing --satellite_number $SATNUM --finish_processing"
                 ;;
                 *)  echo "Satdump : METEOR satellite number ${SATNUM} not found"
                     exit 0
