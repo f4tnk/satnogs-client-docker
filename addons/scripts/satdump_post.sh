@@ -34,7 +34,7 @@ if [ "${CMD^^}" = "START" ]; then
         day=$(date "+%d")
         hour=$(date "+%H")
     
-        if [[ "$MODE" == "APT" || "$MODE" == *"LRPT"* ]]; then
+        if [[ "$MODE" == "APT" || "$MODE" == *"LRPT"* || "$SATNAME" == *"METEOR"* ]]; then
             if [[ "$MODE" == "APT" ]]; then
                 images_satdump=()
                 OUT_IMG="$SATNOGS_APP_PATH/satdump_$ID"
