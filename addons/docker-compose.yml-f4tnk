@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+
+  rigctld:
+    image: librespace/hamlib:latest
+    user: '999'
+    #read_only: true
+    environment:
+      MODEL: '1'
+    restart: 'unless-stopped'
+    command: 'rigctld'
+
+  satnogs_client:
+    image: knegge/satnogs-client:sa2kng-addons-f4tnk
+    #image : registry/satnogs-client-docker-addons:latest
+    #image: librespace/satnogs-client:master  # LSF stable docker image
+    #image: librespace/satnogs-client:master-unstable  # LSF experimental docker image
+    #image: librespace/satnogs-client:lsf-addons  # LSF stable + gr-satellites and addons
+    #image: librespace/satnogs-client:lsf-dev-addons  # LSF unstable + gr-satellites and addons
+    user: '999'
+    #read_only: true
+    init: true  # init is needed when launching processes in the background
+    env_file:
+      - ./station.env
+    environment:
+      SATNOGS_RIG_IP: 'rigctld'
+      SATNOGS_RIG_PORT: '4532'
+    tty: true          # Alloue un pseudo-terminal
+    #stdin_open: true   # Ouvre stdin pour l'entrée interactive
+    command: liveupdate-satyaml.sh sdrplay.sh check-sdr.sh satnogs-client
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    devices:
+      - '/dev/bus/usb'
+    # Use "docker-compose down -v" for delete persistent named volume, it's can be recreated by "docker-compose up -d"
+    volumes:
+      - type: 'volume'
+        source: 'tmp'
+        target: '/tmp'
+      - type: 'volume'
+        source: 'satnogs-client'
+        target: '/var/lib/satnogs-client'
+      - type: 'volume'
+        source: 'scripts'
+        target: '/usr/bin'
+      - type: 'volume'
+        source: 'satnogs-bin'
+        target: '/usr/local/lib/python3.9/dist-packages/satnogsclient'
+      - type: 'volume'
+        source: 'satyaml'
+        target: '/usr/lib/python3/dist-packages/satellites/satyaml'
+    restart: 'unless-stopped'
+    stop_grace_period: 1s
+volumes:
+  satnogs-client:  # persistent named volume for the station
+  scripts:
+  satnogs-bin:  
+  satyaml:
+  tmp:
