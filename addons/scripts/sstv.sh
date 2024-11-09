@@ -35,7 +35,7 @@ fi
 if [ "${CMD^^}" = "START" ]; then
   if [[ "${MODE,,}" =~ "sstv" ]]; then
     DATE_OBS=$(date +"%Y-%m-%dT%H-%M-%S")
-    OGG="${SATNOGS_APP_PATH}/satnogs_${ID}_${DATE_OBS}.ogg"
+    OGG=$(find $SATNOGS_APP_PATH -type f -name "satnogs_${ID}_*.ogg")
     OPT="-d \"$OGG\" -o \"$SATNOGS_APP_PATH/sstv_$ID.png\""
     echo "$PRG $OPT"
     $BIN $OPT
