@@ -169,8 +169,8 @@ RUN cd SatDump &&\
     cmake --build build --target install
 
 # GR VOLK
-RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
-RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
+#RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
+#RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin

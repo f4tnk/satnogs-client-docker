@@ -99,7 +99,7 @@ if [ "${CMD^^}" = "START" ]; then
                 ;;
               esac
           ;;
-          *"HRPT"*) # Mode HRPT
+          *"HRPT"* | *"BPSK"*) # Mode HRPT
               echo "$PRG running at $SAMP srs on $SATNAME with mode $MODE"
               OPT="live meteor_hrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --start_timestamp $UNIXTD --dc_block $DC_BLOCK --finish_processing"
           ;;
