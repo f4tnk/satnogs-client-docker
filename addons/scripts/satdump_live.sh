@@ -58,8 +58,9 @@ if [ "${CMD^^}" = "START" ]; then
                 ;;
               esac
               sdrpp_noise_reduction="true"
+              autocrop_wedges="true"
               echo "$PRG running at $SAMP  sps on $SATNAME with mode $MODE"
-              OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --sdrpp_noise_reduction $sdrpp_noise_reduction --dc_block $DC_BLOCK --satellite_number $SATNUM --start_timestamp $UNIXTD --finish_processing"
+              OPT="live noaa_apt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --sdrpp_noise_reduction $sdrpp_noise_reduction --autocrop_wedges $autocrop_wedges --dc_block $DC_BLOCK --satellite_number $SATNUM --start_timestamp $UNIXTD --finish_processing"
           ;;
          
           *"HRPT"*) # Mode HRPT
