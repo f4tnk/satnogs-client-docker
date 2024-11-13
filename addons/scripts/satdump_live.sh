@@ -84,13 +84,13 @@ if [ "${CMD^^}" = "START" ]; then
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --frequency $FREQ --dc_block $DC_BLOCK --satellite_number $SATNUM --finish_processing"
                 ;;
                 "57166")  SATNUM="M2-3"
-                          rs_usecheck="false" #Test
+                          rs_usecheck="true" #Test
                           fill_missing="true"
                           echo "$PRG running at $SAMP srs on $SATNAME with mode $MODE"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --fill_missing $fill_missing --satellite_number $SATNUM --finish_processing"
                 ;;
                 "59051")  SATNUM="M2-4"
-                          rs_usecheck="false" #Test
+                          rs_usecheck="true" #Test
                           fill_missing="true"
                           echo "$PRG running at $SAMP srs on $SATNAME with mode $MODE"
                           OPT="live meteor_m2-x_lrpt $OUT --source net_source --mode udp --source_id 0 --port $UDP_DUMP_PORT --samplerate $SAMP --rs_usecheck $rs_usecheck --frequency $FREQ --dc_block $DC_BLOCK --fill_missing $fill_missing --satellite_number $SATNUM --finish_processing"

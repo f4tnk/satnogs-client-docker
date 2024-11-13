@@ -16,12 +16,6 @@ RUN mkdir -p /target/usr && rm -rf /usr/local && ln -sf /target/usr /usr/local
 
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 
-# install gr-satellites, this is now included in the base image
-RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
-RUN cd gr-satellites &&\
-    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
-    cmake --build build --target install
-
 # install beesat-sdr for mobitex support
 RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/beesat-sdr.git
 RUN cd beesat-sdr/gr-tnc_nx &&\
@@ -169,8 +163,14 @@ RUN cd SatDump &&\
     cmake --build build --target install
 
 # GR VOLK
-#RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
-#RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
+RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
+RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
+
+# install gr-satellites, this is now included in the base image
+RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
+RUN cd gr-satellites &&\
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
+    cmake --build build --target install
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin
