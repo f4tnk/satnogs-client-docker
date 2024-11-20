@@ -1,0 +1,14 @@
+name: ConnectaIoT-1
+norad: 60472
+description: ConnectaIoT-1 est un satellite de la constellation Connecta, conçu pour fournir des services de communication IoT.
+data:
+  &tlm AX25 telemetry:
+    telemetry: ax25
+transmitters:
+  UHF_GMSK_4800:
+    frequency: 401.510e6
+    modulation: FSK
+    baudrate: 4800
+    framing: AX.25
+    data:
+      - *tlm
