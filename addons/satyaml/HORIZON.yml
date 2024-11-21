@@ -5,6 +5,8 @@ norad: 98793
 data:
    &tlm Telemetry:
      unknown
+   &ax25 AX25 Telemetry:
+     telemetry: ax25
 transmitters:
    9k6 FSK downlink:
      frequency: 435.430e+6
@@ -14,3 +16,4 @@ transmitters:
      frame size: 74
      data:
      - *tlm
+     - *ax25

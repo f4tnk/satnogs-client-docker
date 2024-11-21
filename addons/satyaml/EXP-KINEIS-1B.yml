@@ -1,10 +1,8 @@
 name: KINEIS-1B
 norad: 60079
-description: >
-  KINEIS-1B is part of the Kinéis constellation, designed for global IoT connectivity.
-  It transmits telemetry using FSK modulation at 2400 baud.
+description: KINEIS-1B is part of the Kinéis constellation, designed for global IoT connectivity
 data:
-  - &tlm
+  &tlm
     name: telemetry
 transmitters:
   FSK2400:
@@ -12,4 +10,5 @@ transmitters:
     modulation: FSK
     baudrate: 2400
     data:
-      - *tlm
+    - *tlm
+    
