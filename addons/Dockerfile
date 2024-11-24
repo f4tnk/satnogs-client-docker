@@ -110,7 +110,8 @@ RUN cd rx_tools &&\
     cmake --build build --target install
 
 # rffft from strf
-RUN git clone --depth=1 https://github.com/cbassa/strf.git
+# https://github.com/cbassa/strf.git
+RUN git clone --depth=1 https://gitlab.com/hb9fxx/strf.git 
 RUN cd strf && make rffft && cp rffft /target/usr/bin
 
 # Meteor-M2 series demodulator
