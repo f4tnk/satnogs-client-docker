@@ -29,4 +29,4 @@ ARGS+=" --build-arg CLIENT_BRANCH=${TAG_CLIENT_SATNOGS}"
 docker build \
     -t ${REPO_ROOT}/satnogs-client:${TAG_IMAGE} \
     ${ARGS} \
-    . "$@" --no-cache
+    . "$@"

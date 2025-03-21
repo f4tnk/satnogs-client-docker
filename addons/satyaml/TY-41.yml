@@ -1,0 +1,17 @@
+name: TY-41
+norad: 61231
+data:
+  &tlm Telemetry:
+    unknown
+  &csp ccsds Telemetry:
+    telemetry: csp
+transmitters:
+  4k8 FSK downlink:
+    frequency: 401.750e+6
+    modulation: FSK
+    deviation: 4800
+    baudrate: 19200
+    framing: AX100 ASM+Golay
+    data:
+    - *tlm
+    - *csp

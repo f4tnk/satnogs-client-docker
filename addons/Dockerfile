@@ -111,6 +111,9 @@ RUN cd rx_tools &&\
 
 # rffft from strf
 # https://github.com/cbassa/strf.git
+RUN apt -y install git make gcc gfortran libpng-dev libx11-dev libgsl-dev libfftw3-dev libsox-dev dos2unix
+RUN mkdir -p /srv/bandscan/
+RUN chown satnogs-client:satnogs-client /srv/bandscan/
 RUN git clone --depth=1 https://gitlab.com/hb9fxx/strf.git 
 RUN cd strf && make rffft && cp rffft /target/usr/bin
 
