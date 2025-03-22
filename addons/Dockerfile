@@ -171,7 +171,7 @@ RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/vol
 RUN cd volk && mkdir build && cd build && cmake .. && make && make install && ldconfig
 
 # install gr-satellites, this is now included in the base image
-RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
+RUN git clone -b v3.21.0 --depth=1 https://github.com/daniestevez/gr-satellites.git
 RUN cd gr-satellites &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
     cmake --build build --target install
