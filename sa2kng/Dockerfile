@@ -20,9 +20,9 @@ ARG FLOWGRAPHS_VER=1.5-1
 ARG GRSOAPY_URL=https://gitlab.com/librespacefoundation/gr-soapy.git
 ARG GRSOAPY_BRANCH=v2.1.3.1
 ARG GRSOAPY_VER=2.1.3.1-1
-ARG CLIENT_URL=https://gitlab.com/librespacefoundation/satnogs/satnogs-client.git
-ARG CLIENT_BRANCH=1.9.2
-ARG CLIENT_VER=1.9.2
+ARG CLIENT_URL=https://gitlab.com/f4tnk/satnogs-client.git
+ARG CLIENT_BRANCH=1.9.2+sa2kng-f4tnk
+ARG CLIENT_VER=1.9.2+sa2kng-f4tnk
 
 RUN git clone --depth 1 --branch "$GRSATNOGS_BRANCH" "$GRSATNOGS_URL"
 RUN git clone --depth 1 --branch "$FLOWGRAPHS_BRANCH" "$FLOWGRAPHS_URL"
