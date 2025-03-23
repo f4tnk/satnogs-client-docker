@@ -64,7 +64,7 @@ RUN MAJVERS=3 &&\
     ldconfig
 
 # SoapySDRPlay3 from pothosware
-RUN git clone --depth=1 -b soapy-sdrplay3-0.5.1 https://github.com/pothosware/SoapySDRPlay3.git
+RUN git clone --depth=1 -b soapy-sdrplay3-0.5.2 https://github.com/pothosware/SoapySDRPlay3.git
 RUN cd SoapySDRPlay3 &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr/local -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
