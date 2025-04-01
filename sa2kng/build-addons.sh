@@ -1,6 +1,6 @@
 #!/bin/bash
 export DOCKER_BUILDKIT=1
-TAG="sa2kng-kerel-addons"
+TAG="sa2kng-kerel-f4tnk-addons"
 REPO_ROOT="kerel64"
 SATNOGS_IMAGE_TAG="kerel"
 
