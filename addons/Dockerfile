@@ -17,10 +17,10 @@ RUN mkdir -p /target/usr && rm -rf /usr/local && ln -sf /target/usr /usr/local
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 
 # install gr-satellites, this is now included in the base image
-#RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/gr-satellites.git
-#RUN cd gr-satellites &&\
-#    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
-#    cmake --build build --target install
+RUN git clone -b v5.7.0 --depth=1 https://github.com/daniestevez/gr-satellites.git
+RUN cd gr-satellites &&\
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
+    cmake --build build --target install
 
 # install beesat-sdr for mobitex support -----> ERREUR GNU RADIO 3.10
 #RUN git clone -b maint-3.8 --depth=1 https://github.com/daniestevez/beesat-sdr.git
