@@ -3,6 +3,7 @@ export DOCKER_BUILDKIT=1
 TAG_IMAGE="sa2kng-f4tnk"
 TAG_CLIENT_SATNOGS="1.9.2+sa2kng-f4tnk"
 TAG="sa2kng"
+TAG_F4TNK="sa2kng-f4tnk"
 REPO_ROOT="knegge"
 GNURADIO_IMAGE_TAG="3.8.2.0-satnogs"
 
@@ -17,7 +18,7 @@ ARGS+=" --build-arg FLOWGRAPHS_URL=https://gitlab.com/knegge/satnogs-flowgraphs.
 ARGS+=" --build-arg FLOWGRAPHS_BRANCH=${TAG}"
 ARGS+=" --build-arg FLOWGRAPHS_VER=1.5+2+${TAG}"
 ARGS+=" --build-arg CLIENT_URL=https://gitlab.com/f4tnk/satnogs-client.git"
-ARGS+=" --build-arg CLIENT_BRANCH=${TAG_CLIENT_SATNOGS}"
+ARGS+=" --build-arg CLIENT_BRANCH=${TAG_F4TNK}"
 #ARGS+=" --build-arg RTLSDR_URL=https://github.com/osmocom/rtl-sdr.git"
 #ARGS+=" --build-arg RTLSDR_BRANCH=master"
 #ARGS+=" --build-arg RTLSDR_VER=0.6.0+2+${TAG}"
