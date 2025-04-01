@@ -15,8 +15,8 @@ ARGS+=" --build-arg FLOWGRAPHS_URL=https://gitlab.com/kerel-fs/satnogs-flowgraph
 ARGS+=" --build-arg FLOWGRAPHS_BRANCH=fix_doppler"
 ARGS+=" --build-arg FLOWGRAPHS_VER=1.6~kerel20250311.140979-1"
 
-ARGS+=" --build-arg CLIENT_URL=https://gitlab.com/kerel-fs/satnogs-client.git"
-ARGS+=" --build-arg CLIENT_BRANCH=kerel"
+ARGS+=" --build-arg CLIENT_URL=https://gitlab.com/f4tnk/satnogs-client.git"
+ARGS+=" --build-arg CLIENT_BRANCH=sa2kng-kerel-f4tnk"
 ARGS+=" --build-arg CLIENT_VER=1.9.4~kerel20250311.3fc21ec-1"
 
 docker build \
