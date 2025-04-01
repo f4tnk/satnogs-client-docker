@@ -1,4 +1,4 @@
-ARG GNURADIO_IMAGE_TAG=3.8.2.0-satnogs
+ARG GNURADIO_IMAGE_TAG
 ARG REPO_ROOT=librespace
 FROM ${REPO_ROOT}/gnuradio:${GNURADIO_IMAGE_TAG} AS builder
 
@@ -8,25 +8,23 @@ ENV TZ=Etc/UTC
 WORKDIR /usr/local/src/
 COPY packages.builder .
 RUN apt -y update && \
-    apt -y upgrade && \
+#    apt -y upgrade && \
     xargs -a packages.builder apt install --no-install-recommends -qy
 
 ARG GRSATNOGS_URL=https://gitlab.com/librespacefoundation/satnogs/gr-satnogs.git
-ARG GRSATNOGS_BRANCH=v2.3.5.0
-ARG GRSATNOGS_VER=2.3.5.0-1
+ARG GRSATNOGS_BRANCH
+ARG GRSATNOGS_VER
 ARG FLOWGRAPHS_URL=https://gitlab.com/librespacefoundation/satnogs/satnogs-flowgraphs.git
-ARG FLOWGRAPHS_BRANCH=1.5
-ARG FLOWGRAPHS_VER=1.5-1
-ARG GRSOAPY_URL=https://gitlab.com/librespacefoundation/gr-soapy.git
-ARG GRSOAPY_BRANCH=v2.1.3.1
-ARG GRSOAPY_VER=2.1.3.1-1
-ARG CLIENT_URL=https://gitlab.com/f4tnk/satnogs-client.git
-ARG CLIENT_BRANCH=1.9.2+sa2kng-f4tnk
-ARG CLIENT_VER=1.9.2+sa2kng-f4tnk
+ARG FLOWGRAPHS_BRANCH
+ARG FLOWGRAPHS_VER
+ARG CLIENT_URL=https://gitlab.com/librespacefoundation/satnogs/satnogs-client.git
+ARG CLIENT_BRANCH
 
 RUN git clone --depth 1 --branch "$GRSATNOGS_BRANCH" "$GRSATNOGS_URL"
 RUN git clone --depth 1 --branch "$FLOWGRAPHS_BRANCH" "$FLOWGRAPHS_URL"
-RUN git clone --depth 1 --branch "$GRSOAPY_BRANCH" "$GRSOAPY_URL"
+RUN cd gr-satnogs && \
+    git submodule update --init --recursive
+
 RUN git clone --depth 1 --branch "$CLIENT_BRANCH" "$CLIENT_URL"
 
 ARG CMAKE_BUILD_PARALLEL_LEVEL
@@ -41,11 +39,6 @@ RUN if [ -n "$RTLSDR_URL" ]; then \
         DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
         dpkg -i ../rtl-sdr_*.deb ../librtlsdr0_*.deb ;\
     fi
-
-RUN cd gr-soapy && \
-    dch -m -b --distribution unstable -v $GRSOAPY_VER Upstream master && \
-    DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
-    dpkg -i ../gr-soapy_*.deb ../libgnuradio-soapy_*.deb
 
 RUN cd gr-satnogs && \
     dch -m -b --distribution unstable -v $GRSATNOGS_VER Upstream master && \
@@ -77,7 +70,10 @@ RUN --mount=type=cache,id=wheels,target=/wheels \
     printf "[libs]\nsystem_freetype = true" > $MPLSETUPCFG && \
     printf "[global]\nextra-index-url=https://www.piwheels.org/simple" > /etc/pip.conf && \
     rm -f /wheels/satnogs* && \
-    pip3 install --upgrade pip setuptools wheel ujson --find-links=/wheels --prefer-binary && \
+    pip3 install \
+        --upgrade \
+        --break-system-packages \
+        pip setuptools wheel ujson --find-links=/wheels --prefer-binary && \
     pip3 wheel -w /wheels --find-links=/wheels --prefer-binary \
     -r ./satnogs-client/requirements.txt \
     ./satnogs-client
@@ -103,7 +99,7 @@ RUN --mount=type=cache,id=debs,target=/debs \
 	  apt-key adv --fetch-keys "${OBS_REPO}/Release.key"; \
     fi &&\
     apt -y update && \
-    apt -y upgrade && \
+#    apt -y upgrade && \
     xargs -a /usr/local/src/packages.client apt install -qy python3-pip && \
     apt install -qy --allow-downgrades /debs/$(dpkg --print-architecture)/*.deb && \
     apt -y autoremove && \
@@ -111,9 +107,14 @@ RUN --mount=type=cache,id=debs,target=/debs \
 
 # Install python packages from builder
 RUN --mount=type=cache,id=wheels,target=/wheels \
-    pip3 install --no-cache --find-links=/wheels --no-index satnogs-client
+    pip3 install \
+        --no-cache \
+        --find-links=/wheels \
+        --no-index \
+        --break-system-packages \
+    satnogs-client
 
-ARG SATNOGS_CLIENT_UID=999
+ARG SATNOGS_CLIENT_UID=500
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 
 # Add unprivileged system user

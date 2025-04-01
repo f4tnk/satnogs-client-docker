@@ -1,8 +1,8 @@
 #!/bin/bash
 export DOCKER_BUILDKIT=1
-TAG="sa2kng-addons-f4tnk"
-REPO_ROOT="knegge"
-SATNOGS_IMAGE_TAG="sa2kng-f4tnk"
+TAG="sa2kng-kerel-addons"
+REPO_ROOT="kerel64"
+SATNOGS_IMAGE_TAG="kerel"
 
 ARGS="  --build-arg SATNOGS_IMAGE_TAG=${SATNOGS_IMAGE_TAG}"
 ARGS+=" --build-arg REPO_ROOT=${REPO_ROOT}"
@@ -11,5 +11,4 @@ ARGS+=" --build-arg REPO_ROOT=${REPO_ROOT}"
 docker build \
     -t ${REPO_ROOT}/satnogs-client:${TAG} \
     ${ARGS} \
-    ../addons "$@" --no-cache
-
+    ../addons "$@"

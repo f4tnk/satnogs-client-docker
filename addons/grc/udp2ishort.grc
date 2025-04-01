@@ -1,6 +1,7 @@
 options:
   parameters:
     author: knegge
+    catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''
@@ -40,6 +41,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
+    scale_factor: '1.0'
     vector_output: 'False'
   states:
     bus_sink: false
@@ -84,27 +86,29 @@ blocks:
     coordinate: [200, 148.0]
     rotation: 0
     state: true
-- name: blocks_udp_source_0
-  id: blocks_udp_source
+- name: network_udp_source_0
+  id: network_udp_source
   parameters:
     affinity: ''
-    alias: ''
+    alias: blocks_udp_source_0
     comment: ''
-    eof: 'True'
-    ipaddr: udp_dump_host
+    header: '0'
+    ipv6: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
+    notify_missed: 'False'
+    payloadsize: '1472'
     port: udp_dump_port
-    psize: '1472'
+    src_zeros: 'False'
     type: complex
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 124.0]
+    coordinate: [32, 276.0]
     rotation: 0
-    state: true
+    state: enabled
 - name: udp_dump_host
   id: parameter
   parameters:
@@ -143,7 +147,8 @@ blocks:
 connections:
 - [blocks_complex_to_interleaved_short_0, '0', blocks_file_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_complex_to_interleaved_short_0, '0']
-- [blocks_udp_source_0, '0', blocks_multiply_const_vxx_0, '0']
+- [network_udp_source_0, '0', blocks_multiply_const_vxx_0, '0']
 
 metadata:
   file_format: 1
+  grc_version: 3.10.10.0
