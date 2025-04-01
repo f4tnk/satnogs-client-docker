@@ -1,3 +1,4 @@
+# Déclarations globales d'arguments
 ARG SATNOGS_IMAGE_TAG=master
 ARG REPO_ROOT=librespace
 ARG RUST_IMAGE_TAG=bookworm
@@ -5,9 +6,91 @@ ARG RUST_IMAGE_TAG=bookworm
 ARG VOLK_BRANCH=v3.2.0
 ARG VOLK_URL=https://github.com/gnuradio/volk.git
 
+# Variables pour gr-satellites
+ARG GR_SATELLITES_BRANCH=master
+ARG GR_SATELLITES_URL=https://github.com/daniestevez/gr-satellites.git
+
+# Variables SSDV
+ARG SSDV_URL=https://github.com/daniestevez/ssdv.git
+
+# Variables pour mirisdr
+ARG MIRISDR_URL=https://github.com/ericek111/libmirisdr-5.git
+
+# Variables pour soapymiri
+ARG SOAPYMIRI_URL=https://github.com/ericek111/SoapyMiri.git
+
+# Variables pour SDRplay
+ARG SDRPLAY_MAJVERS=3
+ARG SDRPLAY_VERS=3.15
+ARG SDRPLAY_MINVERS=2
+
+# Variables pour SoapySDRPlay3
+ARG SOAPY_SDRPLAY3_BRANCH=soapy-sdrplay3-0.5.1
+ARG SOAPY_SDRPLAY3_URL=https://github.com/pothosware/SoapySDRPlay3.git
+
+# Variables pour SoapyRTLTCP
+ARG SOAPY_RTLTCP_URL=https://github.com/pothosware/SoapyRTLTCP.git
+
+# Variables pour aptdec
+ARG APTDEC_URL=https://github.com/Xerbo/aptdec.git
+
+# Variables pour kalibrate
+ARG KALIBRATE_RTL_URL=https://github.com/steve-m/kalibrate-rtl.git
+
+# Variables pour rx_tools
+ARG RX_TOOLS_URL=https://github.com/rxseger/rx_tools.git
+
+# Variables pour rffft (strf)
+ARG STRF_URL=https://github.com/cbassa/strf.git
+
+# Variables pour Meteor-M2 demodulator
+ARG METEOR_DEMOD_URL=https://github.com/dbdexter-dev/meteor_demod.git
+
+# Variables pour Meteor-M LRPT decoder
+ARG METEOR_DECODE_URL=https://github.com/dbdexter-dev/meteor_decode.git
+
+# Variables pour libgpredict
+ARG LIBGPREDICT_URL=https://github.com/cubehub/libgpredict.git
+
+# Variables pour URESAT-1 decoder
+ARG URESAT_URL=https://github.com/AMSAT-EA/URESAT-1-decoder.git
+
+# Variables pour SatDump CLI (désactivé par défaut)
+ARG SATDUMP_URL=https://github.com/SatDump/SatDump.git
+
+# Variable pour satnogs-monitor (stage Rust)
+ARG SATNOGS_MONITOR_URL=https://github.com/wose/satnogs-monitor.git
+
+#############################################
+### Stage Builder
+#############################################
 FROM ${REPO_ROOT}/satnogs-client:${SATNOGS_IMAGE_TAG} AS builder
 WORKDIR /usr/src
 USER root
+
+# Redéclaration des variables utilisées dans ce stage
+ARG VOLK_BRANCH
+ARG VOLK_URL
+ARG GR_SATELLITES_BRANCH
+ARG GR_SATELLITES_URL
+ARG SSDV_URL
+ARG MIRISDR_URL
+ARG SOAPYMIRI_URL
+ARG SDRPLAY_MAJVERS
+ARG SDRPLAY_VERS
+ARG SDRPLAY_MINVERS
+ARG SOAPY_SDRPLAY3_BRANCH
+ARG SOAPY_SDRPLAY3_URL
+ARG SOAPY_RTLTCP_URL
+ARG APTDEC_URL
+ARG KALIBRATE_RTL_URL
+ARG RX_TOOLS_URL
+ARG STRF_URL
+ARG METEOR_DEMOD_URL
+ARG METEOR_DECODE_URL
+ARG LIBGPREDICT_URL
+ARG URESAT_URL
+ARG SATDUMP_URL
 
 # install build env and required libs etc
 COPY packages.builder .
@@ -20,7 +103,7 @@ RUN mkdir -p /target/usr && rm -rf /usr/local && ln -sf /target/usr /usr/local
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 
 # install gr-satellites, this is now included in the base image
-RUN git clone -b v5.7.0 --depth=1 https://github.com/daniestevez/gr-satellites.git
+RUN git clone -b ${GR_SATELLITES_BRANCH} --depth=1 ${GR_SATELLITES_URL}
 RUN cd gr-satellites &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
     cmake --build build --target install
@@ -32,7 +115,7 @@ RUN cd gr-satellites &&\
 #    cmake --build build --target install
 
 # SSDV with support for DSLWP and JY1SAT modes
-RUN git clone --depth=1 https://github.com/daniestevez/ssdv.git
+RUN git clone --depth=1 ${SSDV_URL}
 RUN cd ssdv &&\
     make DESTDIR=/target install
 
@@ -42,21 +125,21 @@ RUN cd ssdv &&\
 #    make DESTDIR=/target PREFIX=/usr install
 
 # install mirisdr
-RUN git clone https://github.com/ericek111/libmirisdr-5.git
+RUN git clone ${MIRISDR_URL}
 RUN cd libmirisdr-5 &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
 
 # install soapymiri
-RUN git clone https://github.com/ericek111/SoapyMiri.git
+RUN git clone ${SOAPYMIRI_URL}
 RUN cd SoapyMiri &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr/local -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
 
 # SDRplay services install
-RUN MAJVERS=3 &&\
-    VERS=3.15 &&\
-    MINVERS=2 &&\
+RUN MAJVERS=${SDRPLAY_MAJVERS} &&\
+    VERS=${SDRPLAY_VERS} &&\
+    MINVERS=${SDRPLAY_MINVERS} &&\
     BINARY=SDRplay_RSP_API-Linux-${VERS}.${MINVERS}.run &&\
     DIR=$(dpkg --print-architecture) &&\
     curl --no-keepalive -o sdrplay_api https://www.sdrplay.com/software/${BINARY} &&\
@@ -69,19 +152,19 @@ RUN MAJVERS=3 &&\
     ldconfig
 
 # SoapySDRPlay3 from pothosware
-RUN git clone --depth=1 -b soapy-sdrplay3-0.5.1 https://github.com/pothosware/SoapySDRPlay3.git
+RUN git clone --depth=1 -b ${SOAPY_SDRPLAY3_BRANCH} ${SOAPY_SDRPLAY3_URL}
 RUN cd SoapySDRPlay3 &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr/local -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
 
 # SoapyRTLTCP from pothosware
-RUN git clone --depth=1 https://github.com/pothosware/SoapyRTLTCP.git
+RUN git clone --depth=1 ${SOAPY_RTLTCP_URL}
 RUN cd SoapyRTLTCP &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr/local -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
 
 # install aptdec
-RUN git clone --recursive https://github.com/Xerbo/aptdec.git
+RUN git clone --recursive ${APTDEC_URL}
 RUN cd aptdec &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
@@ -186,7 +269,9 @@ RUN chmod 0755 /target/usr/bin/*
 ENTRYPOINT []
 CMD ["bash"]
 
-
+#############################################
+### Stage Rust
+#############################################
 FROM rust:${RUST_IMAGE_TAG} AS rust
 WORKDIR /usr/src
 USER root
@@ -201,21 +286,25 @@ RUN apt -y update && \
 RUN mkdir -p /target/usr/bin
 
 ARG CMAKE_BUILD_PARALLEL_LEVEL
+ARG LIBGPREDICT_URL
+ARG SATNOGS_MONITOR_URL
 
 # libgpredict
-RUN git clone --depth=1 https://github.com/cubehub/libgpredict.git
+RUN git clone --depth=1 ${LIBGPREDICT_URL}
 RUN cd libgpredict &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
 
 # satnogs-monitor
-RUN git clone --depth=1 https://github.com/wose/satnogs-monitor.git
+RUN git clone --depth=1 ${SATNOGS_MONITOR_URL}
 RUN cd satnogs-monitor/monitor &&\
     cargo update &&\
     cargo build --release &&\
     cp ../target/release/satnogs-monitor /target/usr/bin/
-
-
+    
+#############################################
+### Stage Runner
+#############################################
 FROM ${REPO_ROOT}/satnogs-client:${SATNOGS_IMAGE_TAG} AS runner
 LABEL org.opencontainers.image.authors="Daniel Ekman <knegge@gmail.com>"
 
