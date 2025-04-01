@@ -2,6 +2,9 @@ ARG SATNOGS_IMAGE_TAG=master
 ARG REPO_ROOT=librespace
 ARG RUST_IMAGE_TAG=bookworm
 
+ARG VOLK_BRANCH=v3.2.0
+ARG VOLK_URL=https://github.com/gnuradio/volk.git
+
 FROM ${REPO_ROOT}/satnogs-client:${SATNOGS_IMAGE_TAG} AS builder
 WORKDIR /usr/src
 USER root
@@ -159,6 +162,12 @@ RUN if [ -n "$BUILD_SATDUMP" ]; then \
             -DBUILD_TOOLS=ON &&\
         cmake --build build --target install ;\
     fi
+
+# GR VOLK
+RUN git clone -b ${VOLK_BRANCH} --depth=1 --recurse-submodules -j8 ${VOLK_URL}
+RUN cd volk && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
+    cmake --build build --target install
 
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 # UDP client for programs that require data on stdin
