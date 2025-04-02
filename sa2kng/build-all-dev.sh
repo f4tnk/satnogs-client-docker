@@ -12,6 +12,6 @@ cd /root/dev/satnogs-client-docker/sa2kng
 cd /root/station-3762
 docker-compose down -v
 docker-compose up -d
-#docker exec -it station-3762_satnogs_client_1 bash -c "volk_profile"
+docker exec -it station-3762_satnogs_client_1 bash -c "volk_profile"
 cd /root/dev/satnogs-client-docker/sa2kng
 /root/station-3762/docker-compose logs -f
