@@ -118,7 +118,6 @@ class GrSat(object):
             "--kiss_out",
             self.kiss_file,
             "--ignore_unknown_args",
-            "--satcfg",
         ]
         if 0 < self.zmq_port <= 65535:
             gr_app.extend(["--zmq_pub", f"tcp://0.0.0.0:{str(self.zmq_port)}"])

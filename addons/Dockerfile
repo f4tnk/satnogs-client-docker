@@ -103,7 +103,7 @@ RUN mkdir -p /target/usr && rm -rf /usr/local && ln -sf /target/usr /usr/local
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 
 # install gr-satellites, this is now included in the base image
-RUN git clone -b ${GR_SATELLITES_BRANCH} --depth=1 ${GR_SATELLITES_URL}
+RUN git clone --recurse-submodules -j8 -b ${GR_SATELLITES_BRANCH} --depth=1 ${GR_SATELLITES_URL}
 RUN cd gr-satellites &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr &&\
     cmake --build build --target install
