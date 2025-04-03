@@ -1,0 +1,57 @@
+# satnogs-monitor example config
+
+# log level 0 -> WARN, 1 -> INFO, 2 -> DEBUG, 3 -> TRACE
+#log_level = 1
+
+# If satnogs-monitor runs on the same machine as the satnogs-client, you can
+# set data_path to the satnogs-client data path and get some observation data
+# as it happens
+data_path = "/tmp/.satnogs/data"
+
+# If you have a rotator setup you can specify your rotctld address here to
+# display the rotators position next to the vessels azimuth and elevation
+#rotctld_address = "127.0.0.1:4533"
+
+# Change the rotctld_interval to adjust the polling interval for the rotator
+# position. Increase this value if your rotator position stops updating after
+# the observation has been started. (min: 1s, default: 5s)
+#rotctld_interval = 5
+
+# The job data is updated every 600 seconds. Since you can't schedule new jobs
+# sooner than now + 10 minutes this guarantees that we don't miss any
+# observations.
+job_update_interval = 600
+
+[[stations]]
+# Your stations SatNOGS id
+satnogs_id = xxxx
+
+# Set this to true if the monitor runs on the same machine as the SetNOGS
+# ground station to get system infos (CPU temperature, Mem usage, ...).
+local = true
+
+[ui]
+# dB range of the spectrum and waterfall plot
+db_min = -100.0
+db_max = -70.0
+
+# Number of orbits plotted on the map.
+ground_track_num = 3
+
+# If you enabled the rotator monitoring you can override the warning (yellow) 
+# and error level here.
+#rotator_warn = 5.0
+#rotator_error = 15.0
+
+# draw the satellite footprint on the map
+sat_footprint = true
+
+# the spectrum_plot and waterfall widgets are only available if satnogs-monitor
+# is run on the same machine as your SatNOGS station and the data_path is set to
+# the satnogs-client data path
+#
+# enable spectrum plot
+spectrum_plot = true
+#
+# enable waterfall (you'll need a true color terminal)
+waterfall = true
