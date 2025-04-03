@@ -53,3 +53,4 @@ swig
 unzip
 virtualenv
 libhamlib-utils
+libsox-dev

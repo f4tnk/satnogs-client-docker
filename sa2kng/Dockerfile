@@ -72,6 +72,7 @@ RUN --mount=type=cache,id=wheels,target=/wheels \
     rm -f /wheels/satnogs* && \
     pip3 install \
         --upgrade \
+        --find-links=/wheels \
         --break-system-packages \
         pip setuptools wheel ujson --prefer-binary && \
     pip3 wheel -w /wheels --prefer-binary \
@@ -110,6 +111,7 @@ RUN --mount=type=cache,id=wheels,target=/wheels \
     pip3 install \
         --no-cache \
         --no-index \
+        --find-links=/wheels \
         --break-system-packages \
     satnogs-client
 
@@ -129,7 +131,9 @@ RUN groupadd -r -g ${SATNOGS_CLIENT_UID} satnogs-client \
 RUN install -d -o ${SATNOGS_CLIENT_UID} -g ${SATNOGS_CLIENT_UID} ${SATNOGS_CLIENT_VARSTATEDIR}
 
 # Restore permissions on satyaml dir
-RUN chown -R satnogs-client:satnogs-client /usr/lib/python3.11/dist-packages/satellites/satyaml
+
+RUN mkdir -p /usr/lib/python3.11/dist-packages/satellites/satyaml \
+    && chown -R satnogs-client:satnogs-client /usr/lib/python3/dist-packages/satellites/satyaml
 
 ARG UHD_URL
 RUN if [ -n "$UHD_URL" ]; then \
@@ -137,4 +141,3 @@ RUN if [ -n "$UHD_URL" ]; then \
     fi
 
 WORKDIR $SATNOGS_CLIENT_VARSTATEDIR
-
