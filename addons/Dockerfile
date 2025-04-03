@@ -236,6 +236,6 @@ RUN xargs -a packages.pip pip install
 COPY --from=builder /target /
 COPY --from=rust /target /
 
-RUN chown -R satnogs-client:satnogs-client /usr/lib/python3/dist-packages/satellites/satyaml
+RUN chown -R satnogs-client:satnogs-client /usr/lib/python3.11/site-packages/satellites/satyaml
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 WORKDIR $SATNOGS_CLIENT_VARSTATEDIR
