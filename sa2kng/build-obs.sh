@@ -15,4 +15,4 @@ docker build \
     -t ${REPO_ROOT}/satnogs-client:${TAG} \
     -f Dockerfile.obs \
     ${ARGS} \
-    . "$@"
+    . "$@" --no-cache
