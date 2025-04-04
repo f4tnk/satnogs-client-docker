@@ -1,13 +1,13 @@
 #!/bin/bash
 #docker system prune -a
 cd /root/dev/satnogs-client
-#git add .
-#git commit -m "Update auto"
-#git push 
-#git push --delete origin 1.9.2+sa2kng-f4tnk
-#git tag -d 1.9.2+sa2kng-f4tnk
-#git tag 1.9.2+sa2kng-f4tnk
-#git push origin --tags
+git add .
+git commit -m "Update auto"
+git push 
+git push --delete origin 1.9.4+f4tnk-dev
+git tag -d 1.9.4+f4tnk-dev
+git tag 1.9.4+f4tnk-dev
+git push origin --tags
 cd /root/dev/satnogs-client-docker/sa2kng
 ./build.sh && ./build-addons.sh
 cd /root/station-3762

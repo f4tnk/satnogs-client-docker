@@ -132,7 +132,7 @@ RUN install -d -o ${SATNOGS_CLIENT_UID} -g ${SATNOGS_CLIENT_UID} ${SATNOGS_CLIEN
 
 # Restore permissions on satyaml dir
 
-RUN chown -R satnogs-client:satnogs-client /usr/lib/python3.11/site-packages/satellites/satyaml
+RUN chown -R satnogs-client:satnogs-client /usr/lib/python3/dist-packages/satellites/satyaml
 
 ARG UHD_URL
 RUN if [ -n "$UHD_URL" ]; then \
