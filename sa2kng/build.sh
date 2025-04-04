@@ -14,9 +14,9 @@ ARGS+=" --build-arg GRSATNOGS_VER=2.3.5.0+2+${TAG}"
 ARGS+=" --build-arg GRSOAPY_URL=https://gitlab.com/knegge/gr-soapy.git"
 ARGS+=" --build-arg GRSOAPY_BRANCH=${TAG}"
 ARGS+=" --build-arg GRSOAPY_VER=2.1.3.1+2+${TAG}"
-ARGS+=" --build-arg FLOWGRAPHS_URL=https://gitlab.com/knegge/satnogs-flowgraphs.git"
-ARGS+=" --build-arg FLOWGRAPHS_BRANCH=${TAG}"
-ARGS+=" --build-arg FLOWGRAPHS_VER=1.5+2+${TAG}"
+ARGS+=" --build-arg FLOWGRAPHS_URL=https://gitlab.com/librespacefoundation/satnogs/satnogs-flowgraphs.git"
+ARGS+=" --build-arg FLOWGRAPHS_BRANCH=master"
+ARGS+=" --build-arg FLOWGRAPHS_VER=1.6+${TAG}"
 ARGS+=" --build-arg CLIENT_URL=https://gitlab.com/f4tnk/satnogs-client.git"
 ARGS+=" --build-arg CLIENT_BRANCH=${TAG_F4TNK}"
 #ARGS+=" --build-arg RTLSDR_URL=https://github.com/osmocom/rtl-sdr.git"
@@ -30,4 +30,4 @@ ARGS+=" --build-arg CLIENT_BRANCH=${TAG_F4TNK}"
 docker build \
     -t ${REPO_ROOT}/satnogs-client:${TAG_IMAGE} \
     ${ARGS} \
-    . "$@" --no-cache
+    . "$@" 
