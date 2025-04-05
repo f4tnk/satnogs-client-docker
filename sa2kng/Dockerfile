@@ -32,33 +32,33 @@ ARG CMAKE_BUILD_PARALLEL_LEVEL
 ARG RTLSDR_URL
 ARG RTLSDR_BRANCH=master
 ARG RTLSDR_VER=0.6.0-3satnogs1
-RUN if [ -n "$RTLSDR_URL" ]; then \
-        git clone --depth 1 --branch "$RTLSDR_BRANCH" "$RTLSDR_URL" rtl-sdr && \
-        cd rtl-sdr && \
-        dch -m -b --distribution unstable -v $RTLSDR_VER Upstream master && \
-        DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
-        dpkg -i ../rtl-sdr_*.deb ../librtlsdr0_*.deb ;\
-    fi
+#RUN if [ -n "$RTLSDR_URL" ]; then \
+#        git clone --depth 1 --branch "$RTLSDR_BRANCH" "$RTLSDR_URL" rtl-sdr && \
+#        cd rtl-sdr && \
+#        dch -m -b --distribution unstable -v $RTLSDR_VER Upstream master && \
+#        DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
+#        dpkg -i ../rtl-sdr_*.deb ../librtlsdr0_*.deb ;\
+#    fi
 
-RUN cd gr-satnogs && \
-    dch -m -b --distribution unstable -v $GRSATNOGS_VER Upstream master && \
-    DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
-    dpkg -i ../gr-satnogs_*.deb ../libgnuradio-satnogs_*.deb
+#RUN cd gr-satnogs && \
+#    dch -m -b --distribution unstable -v $GRSATNOGS_VER Upstream master && \
+#    DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
+#    dpkg -i ../gr-satnogs_*.deb ../libgnuradio-satnogs_*.deb
 
 RUN cd satnogs-flowgraphs && \
     dch -m -b --distribution unstable -v $FLOWGRAPHS_VER Upstream master && \
     DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc && \
     dpkg -i ../satnogs-flowgraphs_*.deb
 
-ARG UHD_URL
-RUN if [ -n "$UHD_URL" ]; then \
-      dget -q -u "$UHD_URL" &&\
-      cd uhd-* &&\
-      DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc --build=binary &&\
-      cd .. &&\
-      rm -f libuhd*dpdk* libuhd-dev* uhd-doc* &&\
-      dpkg -i uhd-host_*.deb libuhd*.deb ;\
-    fi
+#ARG UHD_URL
+#RUN if [ -n "$UHD_URL" ]; then \
+#      dget -q -u "$UHD_URL" &&\
+#      cd uhd-* &&\
+#      DEB_BUILD_OPTIONS=noautodbgsym dpkg-buildpackage -b -us -uc --build=binary &&\
+#      cd .. &&\
+#      rm -f libuhd*dpdk* libuhd-dev* uhd-doc* &&\
+#      dpkg -i uhd-host_*.deb libuhd*.deb ;\
+#    fi
 
 RUN --mount=type=cache,id=debs,target=/debs \
     mkdir -p /debs/$(dpkg --print-architecture)/ && \
