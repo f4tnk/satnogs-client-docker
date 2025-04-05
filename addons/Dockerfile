@@ -155,16 +155,16 @@ RUN mkdir /target/usr/bin/QtSoundModem
 COPY * /target/usr/bin/QtSoundModem
 
 # SatDump CLI
-RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
-RUN cd SatDump &&\
-    cmake -B build \
-      -DCMAKE_INSTALL_PREFIX=/usr \
-      -DCMAKE_STAGING_PREFIX=/target/usr \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_GUI=OFF \
-      -DPLUGIN_SCRIPTING=ON \
-      -DBUILD_TOOLS=ON &&\
-    cmake --build build --target install
+#RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
+#RUN cd SatDump &&\
+#    cmake -B build \
+#      -DCMAKE_INSTALL_PREFIX=/usr \
+#      -DCMAKE_STAGING_PREFIX=/target/usr \
+#      -DCMAKE_BUILD_TYPE=Release \
+#      -DBUILD_GUI=OFF \
+#      -DPLUGIN_SCRIPTING=ON \
+#      -DBUILD_TOOLS=ON &&\
+#    cmake --build build --target install
 
 # GR VOLK
 RUN git clone --depth=1 --recurse-submodules -j8 https://github.com/gnuradio/volk.git
