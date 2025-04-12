@@ -1,1 +1,7 @@
 pymcp2221
+requests 
+tqdm 
+python-dotenv 
+skyfield 
+sgp4
+pandas

@@ -64,7 +64,7 @@ RUN MAJVERS=3 &&\
     ldconfig
 
 # SoapySDRPlay3 from pothosware
-RUN git clone --depth=1 -b soapy-sdrplay3-0.5.2 https://github.com/pothosware/SoapySDRPlay3.git
+RUN git clone --depth=1 -b f4tnk https://github.com/f4tnk/SoapySDRPlay3
 RUN cd SoapySDRPlay3 &&\
     cmake -B build -DCMAKE_INSTALL_PREFIX=/target/usr/local -DCMAKE_BUILD_TYPE=Release &&\
     cmake --build build --target install
@@ -146,13 +146,13 @@ RUN git clone https://github.com/colaclanth/sstv.git
 RUN cd sstv && python3 setup.py install
 
 # QtSoundModem
-RUN apt install -qy qtbase5-dev libmuparser-dev libshp-dev  libqt5serialport5-dev libfftw3-dev libpulse-dev unzip qt5-qmake qtbase5-dev libasound2-dev
-RUN wget "http://www.cantab.net/users/john.wiseman/Downloads/Beta/QtSMSource.zip"
-RUN unzip QtSMSource.zip
-RUN cd QtSoundModem && qmake && make
-RUN 
-RUN mkdir /target/usr/bin/QtSoundModem
-COPY * /target/usr/bin/QtSoundModem
+#RUN apt install -qy qtbase5-dev libmuparser-dev libshp-dev  libqt5serialport5-dev libfftw3-dev libpulse-dev unzip qt5-qmake qtbase5-dev libasound2-dev
+#RUN wget "http://www.cantab.net/users/john.wiseman/Downloads/Beta/QtSMSource.zip"
+#RUN unzip QtSMSource.zip
+#RUN cd QtSoundModem && qmake && make
+#RUN 
+#RUN mkdir /target/usr/bin/QtSoundModem
+#COPY * /target/usr/bin/QtSoundModem
 
 # SatDump CLI
 #RUN git clone --depth=1 https://github.com/SatDump/SatDump.git
@@ -183,7 +183,6 @@ COPY grc/*.grc .
 RUN grcc -o /target/usr/bin/ *.grc
 
 COPY scripts/* /target/usr/bin/
-COPY satyaml/* /target/usr/lib/python3/dist-packages/satellites/satyaml/
 COPY --chown=satnogs-client:satnogs-client direwolf.conf /target/etc/
 COPY --chown=satnogs-client:satnogs-client sat.cfg /target/$SATNOGS_CLIENT_VARSTATEDIR/.gr_satellites/sat.cfg
 COPY --chown=satnogs-client:satnogs-client satdump_cfg.json /target/$SATNOGS_CLIENT_VARSTATEDIR/.config/satdump/satdump_cfg.json
@@ -249,5 +248,6 @@ RUN apt -qy update && \
     apt -qy install imagemagick
 
 RUN chown -R satnogs-client:satnogs-client /usr/lib/python3/dist-packages/satellites/satyaml
+
 ARG SATNOGS_CLIENT_VARSTATEDIR=/var/lib/satnogs-client
 WORKDIR $SATNOGS_CLIENT_VARSTATEDIR

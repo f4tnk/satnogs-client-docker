@@ -14,8 +14,8 @@ RUN apt -y update && \
 ARG GRSATNOGS_URL=https://gitlab.com/librespacefoundation/satnogs/gr-satnogs.git
 ARG GRSATNOGS_BRANCH=v2.3.5.0
 ARG GRSATNOGS_VER=2.3.5.0-1
-ARG FLOWGRAPHS_URL=https://gitlab.com/librespacefoundation/satnogs/satnogs-flowgraphs.git
-ARG FLOWGRAPHS_BRANCH=1.5
+ARG FLOWGRAPHS_URL=https://gitlab.com/f4tnk/satnogs-flowgraphs.git
+ARG FLOWGRAPHS_BRANCH=sa2kng-f4tnk-sdrplay-agc
 ARG FLOWGRAPHS_VER=1.5-1
 ARG GRSOAPY_URL=https://gitlab.com/librespacefoundation/gr-soapy.git
 ARG GRSOAPY_BRANCH=v2.1.3.1
