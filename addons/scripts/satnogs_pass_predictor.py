@@ -12,14 +12,16 @@ from tqdm import tqdm
 
 # --- CONFIGURATION ---
 CONFIG = {
-    "modes": ["FSK", "CW", "GFSK"],
-    "min_elevation": 10,
-    "visible_hours": 12,
-    "min_pass_duration": 180,  # Minimum 3 minutes
+    "modes": ["FSK", "MSK", "GFSK"],
+    "min_elevation": 15,
+    "visible_hours": 1,
+    "min_pass_duration": 180,
     "is_frequency_violator": False,
     "max_scheduled_observations": 100,
     "env_path": "station.env",
-    "log_level": logging.INFO
+    "log_level": logging.INFO,
+    "min_success_rate": 5.0,  # Pourcentage minimum de success rate accepté
+    "min_time_before_pass_sec": 300  # 5 minutes
 }
 
 # --- LOGGING ---
@@ -132,6 +134,25 @@ def is_visible_pass(sat, observer, ts, start, end, min_elevation):
     except Exception as e:
         logging.warning(f"Erreur calcul passage NORAD {sat.model.satnum}: {e}")
 
+def get_transmitter_success_rate(uuid):
+    url = f"{API_NET}/transmitters/{uuid}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        stats = data.get("stats", {})
+        return stats.get("success_rate")
+    except Exception as e:
+        logging.warning(f"⚠️ Impossible de récupérer le success rate pour {uuid} : {e}")
+        return None
+
+def safe_launch_date(sat):
+    try:
+        launched = sat.get("launched")
+        return parse_date(launched) if launched else datetime(1970, 1, 1)
+    except Exception:
+        return datetime(1970, 1, 1)
+
 def main(config):
     frequency_ranges = get_station_frequency_ranges(SATNOGS_STATION_ID, SATNOGS_API_TOKEN)
     if not frequency_ranges:
@@ -141,8 +162,9 @@ def main(config):
     satellites, transmitters, tles = fetch_all_data()
     ts = load.timescale()
     observer = Topos(latitude_degrees=SATNOGS_LAT, longitude_degrees=SATNOGS_LON, elevation_m=SATNOGS_ELEV)
-    now = ts.utc(datetime.now(timezone.utc))
-    future = ts.utc(datetime.now(timezone.utc) + timedelta(hours=config["visible_hours"]))
+    now = datetime.now(timezone.utc)
+    ts_now = ts.utc(now)
+    ts_future = ts.utc(now + timedelta(hours=config["visible_hours"]))
 
     allowed_norads = set()
     filtered_transmitters = {}
@@ -174,7 +196,7 @@ def main(config):
     for norad, sat in sat_objects.items():
         sat_info = valid_sats[norad]
         tx_list = filtered_transmitters.get(norad, [])
-        passes = list(is_visible_pass(sat, observer, ts, now, future, config["min_elevation"]))
+        passes = list(is_visible_pass(sat, observer, ts, ts_now, ts_future, 0))
         if not passes:
             continue
         current = {}
@@ -187,20 +209,14 @@ def main(config):
             elif p["event"] == "set" and "start" in current and "peak" in current:
                 current["end"] = p["end"]
                 if (current["end"] - current["start"]).total_seconds() < config["min_pass_duration"]:
-                    continue  # Skip short passes
+                    continue
                 current["norad"] = norad
                 current["sat_info"] = sat_info
                 current["tx_list"] = tx_list
                 visible_passes.append(current)
                 current = {}
 
-    def launch_date(sat):
-        try:
-            return parse_date(sat.get("launched", "1970-01-01"))
-        except:
-            return datetime(1970, 1, 1)
-
-    visible_passes.sort(key=lambda x: (x["start"], -launch_date(x["sat_info"]).timestamp()))
+    visible_passes.sort(key=lambda x: (x["start"], -safe_launch_date(x["sat_info"]).timestamp()))
 
     filtered_passes = []
     last_end = None
@@ -209,16 +225,22 @@ def main(config):
             filtered_passes.append(p)
             last_end = p["end"]
 
-    logging.info(f"✅ Passes visibles sélectionnées : {len(filtered_passes)} (≥ {config['min_pass_duration']}s)")
+    scheduled_count = 0
+    already_scheduled_count = 0
+    total_duration_scheduled = 0
+    total_duration_already = 0
 
     API_SCHEDULE_ENDPOINT = f"{API_NET}/observations/"
-    scheduled_count = 0
     headers = {
         "Authorization": f"Token {SATNOGS_API_TOKEN}",
         "Content-Type": "application/json"
     }
 
     for p in filtered_passes:
+        if (p["start"] - now).total_seconds() < config["min_time_before_pass_sec"]:
+            logging.info(f"🚫 Observation ignorée (trop proche dans le temps < {config['min_time_before_pass_sec']}s) : {p['sat_info'].get('name')} | Début à {p['start']}")
+            continue
+
         tx_candidates = [tx for tx in p["tx_list"] if tx.get("uuid") and len(tx["uuid"]) == 22]
         if not tx_candidates:
             logging.warning(f"🚫 Aucun transmetteur valide pour {p['sat_info'].get('name')}")
@@ -227,6 +249,16 @@ def main(config):
         tx = tx_candidates[0]
         uuid = tx["uuid"]
         freq = tx.get("downlink_low") or tx.get("downlink_high")
+        success_rate = get_transmitter_success_rate(uuid)
+        if success_rate is not None and success_rate < config["min_success_rate"]:
+            logging.info(f"🚫 Observation ignorée (success rate trop bas : {success_rate:.1f}%) pour {p['sat_info'].get('name')}")
+            continue
+
+        success_str = f"{success_rate:.1f}%" if success_rate is not None else "N/A"
+        duration_sec = int((p["end"] - p["start"]).total_seconds())
+        duration_str = f"{duration_sec // 60}m{duration_sec % 60:02d}s"
+        max_elev = f"{p.get('max_elevation_deg', 0):.1f}°"
+        mode = tx.get("mode", "N/A")
 
         payload = {
             "start": p["start"].strftime("%Y-%m-%d %H:%M:%S"),
@@ -239,23 +271,35 @@ def main(config):
 
         try:
             response = requests.post(API_SCHEDULE_ENDPOINT, json=[payload], headers=headers)
-            if response.status_code == 200 or response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()
-                scheduled_count += 1  # Count only successful scheduling (status 200 or 201)
+                scheduled_count += 1
+                total_duration_scheduled += duration_sec
                 for obs in data:
                     sat_name = p["sat_info"].get("name", "???")
                     start = obs.get("start", payload["start"])
                     end = obs.get("end", payload["end"])
-                    logging.info(f"✅ Observation planifiée : {sat_name} | {start} ➞ {end}")
+                    logging.info(f"✅ Observation planifiée : {sat_name} | {start} ➞ {end} | 📊 Success Rate: {success_str} | ⏱ {duration_str} | 📈 Max Elev: {max_elev} | 📡 Mode: {mode}")
             elif response.status_code == 409:
-                # This means the observation is already scheduled (but should be counted)
-                logging.info(f"🗓️ Observation déjà planifiée (conflit d'horaire) : {p['sat_info'].get('name')} | {p['start']} ➞ {p['end']}")
+                already_scheduled_count += 1
+                total_duration_already += duration_sec
+                logging.info(f"🗓️ Observation déjà planifiée (conflit d'horaire) : {p['sat_info'].get('name')} | {p['start']} ➞ {p['end']} | 📊 Success Rate: {success_str} | ⏱ {duration_str} | 📈 Max Elev: {max_elev} | 📡 Mode: {mode}")
             else:
                 logging.error(f"❌ Erreur API {response.status_code}: {response.text}")
         except Exception as e:
             logging.error(f"❌ Exception lors de l'appel API : {e}")
 
-    logging.info(f"✅ Total des observations planifiées : {scheduled_count}")
+    def format_duration(seconds):
+        return f"{seconds // 60}m{seconds % 60:02d}s"
+
+    total_duration_all = total_duration_scheduled + total_duration_already
+    total_observations = scheduled_count + already_scheduled_count
+
+    logging.info("\n📊 Résumé final :")
+    logging.info(f"  ➤ Total satellites analysés : {len(valid_sats)}")
+    logging.info(f"  ➤ Observations planifiées : {scheduled_count} | Durée cumulée : {format_duration(total_duration_scheduled)}")
+    logging.info(f"  ➤ Observations déjà planifiées : {already_scheduled_count} | Durée cumulée : {format_duration(total_duration_already)}")
+    logging.info(f"  ✅ Total des observations considérées : {total_observations} | Durée cumulée : {format_duration(total_duration_all)}")
 
 if __name__ == "__main__":
     main(CONFIG)
