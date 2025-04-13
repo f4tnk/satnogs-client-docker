@@ -21,7 +21,8 @@ CONFIG = {
     "env_path": "station.env",
     "log_level": logging.INFO,
     "min_success_rate": 5.0,  # Pourcentage minimum de success rate accepté
-    "min_time_before_pass_sec": 300  # 5 minutes
+    "min_time_before_pass_sec": 300,  # 5 minutes
+    "excluded_sat_keywords": ["SITRO","KINE"]  # Tu peux en mettre plusieurs, insensibles à la casse
 }
 
 # --- LOGGING ---
@@ -160,9 +161,16 @@ def main(config):
         return
 
     satellites, transmitters, tles = fetch_all_data()
+    excluded_keywords = [kw.lower() for kw in config.get("excluded_sat_keywords", [])]
+
+    def is_excluded(sat_name):
+        return any(kw in sat_name.lower() for kw in excluded_keywords)
+
+    satellites = [s for s in satellites if not is_excluded(s.get("name", ""))]
+    
     ts = load.timescale()
     observer = Topos(latitude_degrees=SATNOGS_LAT, longitude_degrees=SATNOGS_LON, elevation_m=SATNOGS_ELEV)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) + timedelta(seconds=config["min_time_before_pass_sec"])
     ts_now = ts.utc(now)
     ts_future = ts.utc(now + timedelta(hours=config["visible_hours"]))
 
@@ -210,6 +218,8 @@ def main(config):
                 current["end"] = p["end"]
                 if (current["end"] - current["start"]).total_seconds() < config["min_pass_duration"]:
                     continue
+                if current.get("max_elevation_deg", 0) < config["min_elevation"]:
+                   continue
                 current["norad"] = norad
                 current["sat_info"] = sat_info
                 current["tx_list"] = tx_list
@@ -237,9 +247,6 @@ def main(config):
     }
 
     for p in filtered_passes:
-        if (p["start"] - now).total_seconds() < config["min_time_before_pass_sec"]:
-            logging.info(f"🚫 Observation ignorée (trop proche dans le temps < {config['min_time_before_pass_sec']}s) : {p['sat_info'].get('name')} | Début à {p['start']}")
-            continue
 
         tx_candidates = [tx for tx in p["tx_list"] if tx.get("uuid") and len(tx["uuid"]) == 22]
         if not tx_candidates:
@@ -250,9 +257,6 @@ def main(config):
         uuid = tx["uuid"]
         freq = tx.get("downlink_low") or tx.get("downlink_high")
         success_rate = get_transmitter_success_rate(uuid)
-        if success_rate is not None and success_rate < config["min_success_rate"]:
-            logging.info(f"🚫 Observation ignorée (success rate trop bas : {success_rate:.1f}%) pour {p['sat_info'].get('name')}")
-            continue
 
         success_str = f"{success_rate:.1f}%" if success_rate is not None else "N/A"
         duration_sec = int((p["end"] - p["start"]).total_seconds())
