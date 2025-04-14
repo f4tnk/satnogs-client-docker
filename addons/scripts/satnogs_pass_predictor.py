@@ -42,7 +42,7 @@ import logging
 
 FICHIER_ENV = 'station.env'
 SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
-DUREE_OBSERVATION_HEURES = 1  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
+DUREE_OBSERVATION_HEURES = 12  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
 DELAI_DEPART_MINUTES = 5
 MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS
 
@@ -269,7 +269,7 @@ def calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_t
     return tous_les_passages
 
 def calcul_passages(tle_lines, location, start_time, end_time):
-    """Calcule les passages visibles et trie par AOS croissante"""
+    """Calcule les passages visibles (début à 0° jusqu'à fin à 0°), et filtre sur MAX elevation"""
     try:
         ts = load.timescale()
         satellite = EarthSatellite(tle_lines[1], tle_lines[2], tle_lines[0], ts)
@@ -278,7 +278,8 @@ def calcul_passages(tle_lines, location, start_time, end_time):
         t0 = ts.from_datetime(start_time)
         t1 = ts.from_datetime(end_time)
 
-        times, events = satellite.find_events(observer, t0, t1, altitude_degrees=SEUIL_ELEVATION)
+        # ✅ Trouve tous les passages, sans filtre d’élévation
+        times, events = satellite.find_events(observer, t0, t1, altitude_degrees=0.0)
         passages = []
         current_pass = {}
 
@@ -293,31 +294,38 @@ def calcul_passages(tle_lines, location, start_time, end_time):
                 # ✅ Passage complet ?
                 if 'AOS' in current_pass and 'MAX' in current_pass and 'LOS' in current_pass:
                     try:
-                        # 💡 Vérifie la durée minimale
+                        max_dt = current_pass['MAX'].replace(tzinfo=utc)
+                        t_max = ts.utc(max_dt)
+
+                        # Calcule l'élévation max
+                        difference = satellite - observer
+                        topocentric = difference.at(t_max)
+                        alt, az, distance = topocentric.altaz()
+                        max_elev = alt.degrees
+                        current_pass['MAX_ELEV'] = max_elev
+
+                        # ⛔ Ignorer si l'élévation max est < SEUIL_ELEVATION
+                        if max_elev < SEUIL_ELEVATION:
+                            current_pass = {}
+                            continue
+
+                        # ⛔ Ignorer si durée trop courte
                         duration = (current_pass['LOS'] - current_pass['AOS']).total_seconds()
                         if duration < MIN_OBSERVATION_DURATION_SEC:
                             logging.debug(f"⏳ Passage ignoré — durée trop courte ({duration:.1f}s)")
                             current_pass = {}
                             continue
 
-                        max_dt = current_pass['MAX'].replace(tzinfo=utc)
-                        t_max = ts.utc(max_dt)
-
-                        difference = satellite - observer
-                        topocentric = difference.at(t_max)
-                        alt, az, distance = topocentric.altaz()
-
-                        current_pass['MAX_ELEV'] = alt.degrees
+                        passages.append(current_pass)
                     except Exception as e:
                         logging.warning(f"Erreur calcul élévation max : {e}")
-                        current_pass['MAX_ELEV'] = None
+                        current_pass = {}
 
-                    passages.append(current_pass)
                 else:
                     logging.debug("Passage incomplet ignoré (AOS, MAX ou LOS manquant).")
                 current_pass = {}
 
-        passages.sort(key=lambda p: p['AOS'], reverse=True)  # ou True selon besoin
+        passages.sort(key=lambda p: p['AOS'])  # croissant
         return passages
 
     except Exception as e:
