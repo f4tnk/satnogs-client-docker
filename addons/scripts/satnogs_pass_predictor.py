@@ -12,9 +12,9 @@ from tqdm import tqdm
 
 # --- CONFIGURATION ---
 CONFIG = {
-    "modes": ["FSK", "MSK", "GFSK"],
+    "modes": ["FSK", "PSK" "MSK"],
     "min_elevation": 15,
-    "visible_hours": 1,
+    "visible_hours": 3,
     "min_pass_duration": 180,
     "is_frequency_violator": False,
     "max_scheduled_observations": 100,

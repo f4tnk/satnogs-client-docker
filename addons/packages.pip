@@ -5,3 +5,10 @@ python-dotenv
 skyfield 
 sgp4
 pandas
+os
+logging
+datetime
+tqdm
+json
+dotenv
+logging
