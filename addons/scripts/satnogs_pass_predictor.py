@@ -1,309 +1,688 @@
 #!/usr/bin/env python3
+# ==============================================================================
+# 📡 SatNOGS Observation Automator
+# ------------------------------------------------------------------------------
+# Ce script automatise :
+#   ✅ La récupération des satellites actifs depuis la base SatNOGS
+#   ✅ Le filtrage intelligent des transmetteurs selon :
+#        - statut actif
+#        - absence de violation de fréquence
+#        - modes de modulation souhaités (FSK, PSK, etc.)
+#        - plage de fréquences compatible avec l’antenne de la station
+#        - taux de réussite minimum d'observation
+#   ✅ Le calcul précis des passages visibles pour la station locale
+#   ✅ L'association intelligente d’un seul transmetteur par satellite (meilleur succès)
+#   ✅ La suppression des passages qui se chevauchent (priorité : récence, success_rate)
+#   ✅ L’affichage clair et lisible des résultats
+#   ✅ La programmation automatique des observations via l’API de SatNOGS Network
+#
+# ℹ️  Utilise la configuration depuis un fichier `.env`
+# 🔐 Authentification via token API SatNOGS pour planifier des observations
+# 📅 Compatible avec stations SatNOGS déployées sur le réseau mondial
+#
+# Auteur : F4TNK (Mélaine) 🛰️
+# Date   : Avril 2025
+# ==============================================================================
 import os
-import re
 import logging
+from datetime import datetime, timedelta
 import requests
-import sys
-from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
-from skyfield.api import EarthSatellite, Topos, load
-from dateutil.parser import parse as parse_date
+from skyfield.api import load, wgs84
+from skyfield.sgp4lib import EarthSatellite
+from skyfield.api import load, wgs84, utc
+from datetime import timedelta
 from tqdm import tqdm
+import json
+from dotenv import load_dotenv
+import requests
+import logging
 
-# --- CONFIGURATION ---
-CONFIG = {
-    "modes": ["FSK", "PSK" "MSK"],
-    "min_elevation": 15,
-    "visible_hours": 3,
-    "min_pass_duration": 180,
-    "is_frequency_violator": False,
-    "max_scheduled_observations": 100,
-    "env_path": "station.env",
-    "log_level": logging.INFO,
-    "min_success_rate": 5.0,  # Pourcentage minimum de success rate accepté
-    "min_time_before_pass_sec": 300,  # 5 minutes
-    "excluded_sat_keywords": ["SITRO","KINE"]  # Tu peux en mettre plusieurs, insensibles à la casse
-}
 
-# --- LOGGING ---
-logging.basicConfig(level=CONFIG["log_level"], format="%(asctime)s - %(levelname)s - %(message)s")
+# ------------------------ CONFIGURATION ------------------------
+
+FICHIER_ENV = 'station.env'
+SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
+DUREE_OBSERVATION_HEURES = 1  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
+DELAI_DEPART_MINUTES = 5
+MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS
+
+LOG_FILE = 'satellite_passes.log'
+
+# 🔘 Filtrer uniquement les transmetteurs actifs (alive == True)
+FILTER_TX_ALIVE = True  # ou None pour désactiver le filtre
+
+# 🔘 Exclure les transmetteurs avec violation de fréquence
+FILTER_TX_NO_FREQ_VIOLATION = True  # False pour désactiver le filtre
+
+# 🔘 Filtrer par mode (ex: 'USB', 'CW', 'FM'), insensible à la casse et match partiel
+FILTER_TX_MODES = ["FSK", "MSK", "PSK"]  # Liste vide [] pour désactiver
+
+# 🔘 Filtrer les transmetteurs selon un success_rate minimum (en %)
+FILTER_TX_SUCCESS_RATE_MIN = 10 # Exemple : 10 pour 10%, ou None pour désactiver
+
+# 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse)
+EXCLUDE_SAT_NAMES = ["SITRO", "KINE",]  # [] pour désactiver
+
+# 🔘 Priorité aux satellites récents (en jours) avant de départager les passages
+SAT_RECENT_LAUNCH_DAYS = 30  # None pour désactiver
+
+DUREE_OBSERVATION = timedelta(hours=DUREE_OBSERVATION_HEURES)
+DELAI_DEPART = timedelta(minutes=DELAI_DEPART_MINUTES)
+
+# ------------------------ LOGGING SETUP ------------------------
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    filemode='w',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(message)s')
+console.setFormatter(formatter)
+logging.getLogger('').addHandler(console)
+
+# ------------------------ VAR ENV ------------------------
 try:
-    sys.stdout.reconfigure(encoding='utf-8')
-except AttributeError:
-    pass
+    load_dotenv(FICHIER_ENV)
+    # Lecture de la config depuis FICHIER_ENV
+    latitude = float(os.getenv("SATNOGS_STATION_LAT", 0))
+    longitude = float(os.getenv("SATNOGS_STATION_LON", 0))
+    elevation = float(os.getenv("SATNOGS_STATION_ELEV", 0))
+    station_id = os.getenv("SATNOGS_STATION_ID", "inconnu")
+    api_token = os.getenv("SATNOGS_API_TOKEN", "")
 
-# --- ENV ---
-load_dotenv(dotenv_path=CONFIG["env_path"])
+    position = (latitude, longitude, elevation)
+    logging.info(f"📍 Station {station_id} — lat={latitude}, lon={longitude}, elev={elevation} m")
+except Exception as e:
+    logging.critical(f"Erreur critique lors du chargement de l’environnement : {e}")
 
-def get_env(key, required=True):
-    value = os.getenv(key)
-    if required and not value:
-        logging.error(f"Variable d'environnement manquante : {key}")
-        exit(1)
-    return value
+# ------------------------ FONCTIONS ------------------------
 
-def get_env_float(key):
+def get_satellites_actifs():
+    """Récupère tous les satellites avec status == 'alive' et filtre par exclusion de nom"""
     try:
-        return float(get_env(key))
-    except ValueError:
-        logging.error(f"Variable d'environnement invalide : {key}")
-        exit(1)
+        tqdm.write("🔍 Téléchargement des satellites actifs depuis SatNOGS...")
+        url = "https://db.satnogs.org/api/satellites/"
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            with tqdm.wrapattr(r.raw, "read", total=total, desc="⬇️ Download satellites", unit="B", unit_scale=True) as raw:
+                raw_data = raw.read()
+            satellites = json.loads(raw_data)
 
-SATNOGS_LAT = get_env_float('SATNOGS_STATION_LAT')
-SATNOGS_LON = get_env_float('SATNOGS_STATION_LON')
-SATNOGS_ELEV = get_env_float('SATNOGS_STATION_ELEV')
-SATNOGS_STATION_ID = get_env('SATNOGS_STATION_ID')
-SATNOGS_API_TOKEN = get_env('SATNOGS_API_TOKEN')
+        filtered = {}
+        excluded = 0
 
-API_DB = "https://db.satnogs.org/api"
-API_NET = "https://network.satnogs.org/api"
+        for s in satellites:
+            name = s.get("name", "").lower()
+            norad = s.get("norad_cat_id")
+            status = s.get("status")
 
-def get_station_frequency_ranges(station_id, token):
-    url = f"{API_NET}/stations/{station_id}/"
-    headers = {"Authorization": f"Token {token}"}
+            if status != 'alive' or not norad:
+                continue
+
+            if EXCLUDE_SAT_NAMES:
+                if any(substr.lower() in name for substr in EXCLUDE_SAT_NAMES):
+                    excluded += 1
+                    continue
+
+            filtered[norad] = s
+
+        logging.info(f"✅ Satellites 'alive' retenus : {len(filtered)}")
+        if excluded > 0:
+            logging.info(f"🚫 Satellites exclus par nom : {excluded}")
+
+        return filtered
+
+    except Exception as e:
+        logging.error(f"Erreur récupération satellites : {e}")
+        return {}
+    
+def get_all_tles():
+    """Récupère tous les TLEs disponibles avec barre de téléchargement seulement"""
     try:
+        tqdm.write("🛰️ Téléchargement des TLE depuis SatNOGS...")
+        url = "https://db.satnogs.org/api/tle/"
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            with tqdm.wrapattr(r.raw, "read", total=total, desc="⬇️ Download TLEs", unit="B", unit_scale=True) as raw:
+                raw_data = raw.read()
+            tles = json.loads(raw_data)
+
+        # ✅ parsing sans barre
+        tle_dict = {}
+        for tle in tles:
+            if tle['tle1'] and tle['tle2']:
+                tle_dict[tle['norad_cat_id']] = tle
+        return tle_dict
+    except Exception as e:
+        logging.error(f"Erreur récupération TLEs : {e}")
+        return {}
+
+def get_all_transmitters(alive_filter=True, no_freq_violation=True, modes=None, antenna_ranges=None):
+    """Récupère et filtre les émetteurs SatNOGS avec logique AND sur tous les critères"""
+    try:
+        tqdm.write("📡 Téléchargement de tous les émetteurs depuis SatNOGS...")
+        url = "https://db.satnogs.org/api/transmitters/"
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total_bytes = int(r.headers.get('content-length', 0))
+            with tqdm.wrapattr(r.raw, "read", total=total_bytes, desc="⬇️ Download transmitters", unit="B", unit_scale=True) as raw:
+                raw_data = raw.read()
+            transmitters = json.loads(raw_data)
+
+        total = len(transmitters)
+        transmitters_dict = {}
+        selected = 0
+
+        # Comptages individuels
+        tx_alive = set()
+        tx_freq_ok = set()
+        tx_mode_ok = set()
+        tx_freq_match = set()
+        tx_all_filters = set()
+
+        for tx in transmitters:
+            if not tx.get('uuid'):
+                continue
+
+            uuid = tx['uuid']
+            mode = (tx.get('mode') or "").lower()
+            freq = tx.get('downlink_low')
+
+            # 📊 Marquage par filtre individuel (non bloquant)
+            if alive_filter is None or tx.get('alive') == alive_filter:
+                tx_alive.add(uuid)
+
+            if not no_freq_violation or tx.get('frequency_violation') is not True:
+                tx_freq_ok.add(uuid)
+
+            if modes:
+                if any(m.lower() in mode for m in modes):
+                    tx_mode_ok.add(uuid)
+
+            if antenna_ranges and freq:
+                if any(min_f <= freq <= max_f for (min_f, max_f) in antenna_ranges):
+                    tx_freq_match.add(uuid)
+
+            # ✅ Logique AND combinée (tous critères obligatoires)
+            if alive_filter is not None and tx.get('alive') != alive_filter:
+                continue
+            if no_freq_violation and tx.get('frequency_violation') is True:
+                continue
+            if modes:
+                if not any(m.lower() in mode for m in modes):
+                    continue
+            if antenna_ranges:
+                if not freq or not any(min_f <= freq <= max_f for (min_f, max_f) in antenna_ranges):
+                    continue
+
+            # 🎯 Transmetteur validé
+            transmitters_dict[uuid] = tx
+            tx_all_filters.add(uuid)
+            selected += 1
+
+        # 📊 Logs filtrage
+        logging.info(f"🎯 Transmetteurs totaux dans l'API : {total}")
+        logging.info(f"📊 Transmetteurs correspondant à chaque filtre :")
+        if alive_filter is not None:
+            logging.info(f"   - alive={alive_filter} : {len(tx_alive)} transmetteurs")
+        if no_freq_violation:
+            logging.info(f"   - frequency_violation=False : {len(tx_freq_ok)} transmetteurs")
+        if modes:
+            logging.info(f"   - mode contient {modes} : {len(tx_mode_ok)} transmetteurs")
+        if antenna_ranges:
+            logging.info(f"   - fréquence dans plage antenne : {len(tx_freq_match)} transmetteurs")
+        logging.info(f"✅ Transmetteurs retenus après tous filtres : {selected}")
+
+        return transmitters_dict
+
+    except Exception as e:
+        logging.error(f"Erreur récupération émetteurs : {e}")
+        return {}
+
+    
+def calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_time):
+    """Calcule tous les passages de tous les satellites, triés globalement par AOS croissante"""
+    tous_les_passages = []
+
+    tqdm.write("🧠 Calcul des passages pour chaque satellite...")
+    for norad_id, sat_data in tqdm(satellites.items(), desc="📈 Passage satellites", unit="sat"):
+        tle = tle_dict.get(norad_id)
+        if not tle:
+            continue
+
+        tle_lines = [tle['tle0'], tle['tle1'], tle['tle2']]
+        passages = calcul_passages(tle_lines, position, start_time, end_time)
+
+        for p in passages:
+            duration = p['LOS'] - p['AOS']
+            if duration.total_seconds() > 30:
+                p['SAT_NAME'] = sat_data['name']
+                p['NORAD_ID'] = norad_id
+                tous_les_passages.append(p)
+
+    tous_les_passages.sort(key=lambda p: p['AOS'])  # tri croissant
+    return tous_les_passages
+
+def calcul_passages(tle_lines, location, start_time, end_time):
+    """Calcule les passages visibles et trie par AOS croissante"""
+    try:
+        ts = load.timescale()
+        satellite = EarthSatellite(tle_lines[1], tle_lines[2], tle_lines[0], ts)
+        observer = wgs84.latlon(*location)
+
+        t0 = ts.from_datetime(start_time)
+        t1 = ts.from_datetime(end_time)
+
+        times, events = satellite.find_events(observer, t0, t1, altitude_degrees=SEUIL_ELEVATION)
+        passages = []
+        current_pass = {}
+
+        for t, e in zip(times, events):
+            if e == 0:
+                current_pass['AOS'] = t.utc_datetime()
+            elif e == 1:
+                current_pass['MAX'] = t.utc_datetime()
+            elif e == 2:
+                current_pass['LOS'] = t.utc_datetime()
+
+                # ✅ Passage complet ?
+                if 'AOS' in current_pass and 'MAX' in current_pass and 'LOS' in current_pass:
+                    try:
+                        # 💡 Vérifie la durée minimale
+                        duration = (current_pass['LOS'] - current_pass['AOS']).total_seconds()
+                        if duration < MIN_OBSERVATION_DURATION_SEC:
+                            logging.debug(f"⏳ Passage ignoré — durée trop courte ({duration:.1f}s)")
+                            current_pass = {}
+                            continue
+
+                        max_dt = current_pass['MAX'].replace(tzinfo=utc)
+                        t_max = ts.utc(max_dt)
+
+                        difference = satellite - observer
+                        topocentric = difference.at(t_max)
+                        alt, az, distance = topocentric.altaz()
+
+                        current_pass['MAX_ELEV'] = alt.degrees
+                    except Exception as e:
+                        logging.warning(f"Erreur calcul élévation max : {e}")
+                        current_pass['MAX_ELEV'] = None
+
+                    passages.append(current_pass)
+                else:
+                    logging.debug("Passage incomplet ignoré (AOS, MAX ou LOS manquant).")
+                current_pass = {}
+
+        passages.sort(key=lambda p: p['AOS'], reverse=True)  # ou True selon besoin
+        return passages
+
+    except Exception as e:
+        logging.warning(f"Erreur calcul passage : {e}")
+        return []
+
+def lier_transmetteurs_aux_passages(passages, transmitters):
+    """Associe les transmetteurs filtrés aux passages, en ne gardant que ceux qui ont au moins un émetteur"""
+    transmitters_par_norad = {}
+    for tx in transmitters.values():
+        norad = tx.get("norad_cat_id")
+        if norad:
+            transmitters_par_norad.setdefault(norad, []).append(tx)
+
+    passages_avec_tx = []
+    for p in passages:
+        norad_id = p.get('NORAD_ID')
+        tx_lies = transmitters_par_norad.get(norad_id, [])
+        if tx_lies:
+            p['TRANSMITTERS'] = tx_lies
+            passages_avec_tx.append(p)
+
+    logging.info(f"🔗 Passages retenus avec transmetteurs associés : {len(passages_avec_tx)} (sur {len(passages)})")
+    return passages_avec_tx
+
+
+def afficher_passages_satellites(passages):
+    """Affiche une liste de passages satellites déjà calculée et triée, avec les transmetteurs associés + stats"""
+    for p in passages:
+        logging.info(f"🛰 Satellite : {p['SAT_NAME']} (NORAD {p['NORAD_ID']})")
+        logging.info(f"  AOS : {p['AOS'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        logging.info(f"  MAX : {p['MAX'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        logging.info(f"  LOS : {p['LOS'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        logging.info(f"  Durée : {str(p['LOS'] - p['AOS']).split('.')[0]}")
+
+        if p.get('MAX_ELEV') is not None:
+            logging.info(f"  Élévation max : {p['MAX_ELEV']:.1f}°")
+
+        if p.get("TRANSMITTERS"):
+            for tx in p["TRANSMITTERS"]:
+                mode = tx.get("mode", "N/A")
+                freq = tx.get("downlink_low", "N/A")
+                success = tx.get("success_rate")
+                good = tx.get("good_count")
+
+                # Affichage formaté
+                extra = []
+                if good is not None:
+                    extra.append(f"good={good}")
+                if success is not None:
+                    extra.append(f"success={success}%")
+
+                stats_str = f" | {' | '.join(extra)}" if extra else ""
+                logging.info(f"    📡 {mode} @ {freq} Hz{stats_str}")
+
+        logging.info("-" * 40)
+
+
+def get_station_info(station_id, api_token):
+    """Récupère les informations d'une station SatNOGS + plages antennes"""
+    try:
+        url = f"https://network.satnogs.org/api/stations/{station_id}/"
+        headers = {
+            "Authorization": f"Token {api_token}"
+        }
+
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
-        frequency_ranges = []
+
+        # Logs d'information (inchangés)
+        logging.info("📡 Infos station depuis SatNOGS Network :")
+        logging.info(f"  📍 Nom       : {data.get('name')}")
+        logging.info(f"  🆔 ID        : {data.get('id')}")
+        logging.info(f"  🗺️  Loc      : lat={data.get('lat')}, lon={data.get('lng')}, alt={data.get('altitude')} m")
+        logging.info(f"  💬 Statut    : {data.get('status')}")
+        logging.info(f"  📈 Observ.   : {data.get('observations')} passés, {data.get('future_observations')} futurs")
+        logging.info(f"  💻 Client    : {data.get('client_version')}")
+        logging.info(f"  👤 Owner     : {data.get('owner')}")
+
+        # 📡 Antennes
+        antenna_ranges = []
         for ant in data.get("antenna", []):
-            freq_min = ant.get("frequency")
+            freq = ant.get("frequency")
             freq_max = ant.get("frequency_max")
-            if freq_min and freq_max:
-                frequency_ranges.append({"min": freq_min, "max": freq_max})
-        if not frequency_ranges:
-            logging.warning("⚠️ Aucune plage trouvée. Valeurs par défaut utilisées (UHF).")
-            frequency_ranges = [{"min": 435000000, "max": 438000000}]
-        logging.info(f"Plages de fréquences antenne : {frequency_ranges}")
-        return frequency_ranges
-    except Exception as e:
-        logging.error(f"Erreur API Network station {station_id} : {e}")
-        return []
+            if freq and freq_max:
+                antenna_ranges.append((freq, freq_max))
+                band = ant.get("band", "N/A")
+                type_name = ant.get("antenna_type_name", "N/A")
+                logging.info(f"  📡 Antenne   : {type_name} ({band}) {freq} Hz - {freq_max} Hz")
 
-def fetch_json(endpoint, base=API_DB, params=None):
+        return data, antenna_ranges
+
+    except Exception as e:
+        logging.error(f"Erreur récupération des infos de la station {station_id} : {e}")
+        return None, []
+
+def enrichir_transmetteurs_avec_stats(transmitters, api_token):
+    """Ajoute les stats (success_rate, good_count) à chaque transmetteur via un fetch global.
+       Applique aussi un filtre success_rate min, et sélectionne 1 transmetteur max par satellite.
+    """
     try:
-        response = requests.get(f"{base}/{endpoint}", params=params)
+        tqdm.write("📊 Téléchargement global des stats de transmetteurs depuis SatNOGS Network...")
+        url = "https://network.satnogs.org/api/transmitters/"
+        headers = {"Authorization": f"Token {api_token}"}
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logging.error(f"Erreur API {endpoint}: {e}")
-        return []
+        all_tx_data = response.json()
 
-def fetch_all_data():
-    logging.info("📡 Récupération des données SatNOGS...")
-    for step in tqdm(["satellites", "transmitters", "tle"], desc="📥 Fetching", unit="endpoint"):
-        pass
-    satellites = fetch_json("satellites/")
-    transmitters = fetch_json("transmitters/")
-    tles = fetch_json("tle/")
-    return satellites, transmitters, tles
+        # Map global des stats
+        stats_map = {
+            tx["uuid"]: tx.get("stats", {}) for tx in all_tx_data if "uuid" in tx
+        }
 
-def build_satellite_objects(tles, norad_ids):
-    logging.info("🛰️ Construction des objets satellites...")
-    ts = load.timescale()
-    sats = {}
-    for tle in tqdm(tles, desc="🔧 Création TLE", unit="sat"):
-        if tle['norad_cat_id'] in norad_ids:
-            try:
-                sat = EarthSatellite(tle['tle1'], tle['tle2'], tle['tle0'], ts)
-                sats[tle['norad_cat_id']] = sat
-            except Exception as e:
-                logging.warning(f"TLE invalide NORAD {tle['norad_cat_id']}: {e}")
-    return sats
+        # ✅ Grouper les transmetteurs par satellite (norad_cat_id)
+        transmitters_by_sat = {}
+        for uuid, tx in transmitters.items():
+            norad = tx.get("norad_cat_id")
+            if not norad:
+                continue
 
-def normalize_mode(mode):
-    return re.sub(r'[^a-z0-9]', '', mode.lower()) if mode else ''
+            stats = stats_map.get(uuid, {})
+            sr = stats.get("success_rate")
+            good = stats.get("good_count")
 
-def match_mode(mode, filters):
-    return any(f in normalize_mode(mode) for f in filters)
+            tx["success_rate"] = sr
+            tx["good_count"] = good
 
-def is_frequency_in_range(freq, ranges):
-    return any(r['min'] <= freq <= r['max'] for r in ranges)
-
-def is_visible_pass(sat, observer, ts, start, end, min_elevation):
-    try:
-        times, events = sat.find_events(observer, start, end, altitude_degrees=min_elevation)
-        for ti, event in zip(times, events):
-            label = ['rise', 'max', 'set'][event]
-            if label == 'max':
-                alt, _, _ = (sat - observer).at(ti).altaz()
-                yield {'event': label, 'peak': ti.utc_datetime(), 'max_elevation_deg': alt.degrees}
-            elif label == 'rise':
-                yield {'event': label, 'start': ti.utc_datetime()}
-            elif label == 'set':
-                yield {'event': label, 'end': ti.utc_datetime()}
-    except Exception as e:
-        logging.warning(f"Erreur calcul passage NORAD {sat.model.satnum}: {e}")
-
-def get_transmitter_success_rate(uuid):
-    url = f"{API_NET}/transmitters/{uuid}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        stats = data.get("stats", {})
-        return stats.get("success_rate")
-    except Exception as e:
-        logging.warning(f"⚠️ Impossible de récupérer le success rate pour {uuid} : {e}")
-        return None
-
-def safe_launch_date(sat):
-    try:
-        launched = sat.get("launched")
-        return parse_date(launched) if launched else datetime(1970, 1, 1)
-    except Exception:
-        return datetime(1970, 1, 1)
-
-def main(config):
-    frequency_ranges = get_station_frequency_ranges(SATNOGS_STATION_ID, SATNOGS_API_TOKEN)
-    if not frequency_ranges:
-        logging.error("Aucune plage de fréquence récupérée. Arrêt.")
-        return
-
-    satellites, transmitters, tles = fetch_all_data()
-    excluded_keywords = [kw.lower() for kw in config.get("excluded_sat_keywords", [])]
-
-    def is_excluded(sat_name):
-        return any(kw in sat_name.lower() for kw in excluded_keywords)
-
-    satellites = [s for s in satellites if not is_excluded(s.get("name", ""))]
-    
-    ts = load.timescale()
-    observer = Topos(latitude_degrees=SATNOGS_LAT, longitude_degrees=SATNOGS_LON, elevation_m=SATNOGS_ELEV)
-    now = datetime.now(timezone.utc) + timedelta(seconds=config["min_time_before_pass_sec"])
-    ts_now = ts.utc(now)
-    ts_future = ts.utc(now + timedelta(hours=config["visible_hours"]))
-
-    allowed_norads = set()
-    filtered_transmitters = {}
-    mode_filters = [normalize_mode(m) for m in config["modes"]]
-
-    for tx in transmitters:
-        norad = tx.get("norad_cat_id")
-        if not norad or not tx.get("alive", False):
-            continue
-        freq = tx.get("downlink_low") or tx.get("downlink_high")
-        if freq is None or not is_frequency_in_range(freq, frequency_ranges):
-            continue
-        if mode_filters and not match_mode(tx.get("mode"), mode_filters):
-            continue
-        filtered_transmitters.setdefault(norad, []).append(tx)
-        allowed_norads.add(norad)
-
-    valid_sats = {
-        s['norad_cat_id']: s for s in satellites
-        if s['norad_cat_id'] in allowed_norads and
-           s.get("status") == "alive" and
-           (config["is_frequency_violator"] or s.get("is_frequency_violator") is not True)
-    }
-
-    sat_objects = build_satellite_objects(tles, valid_sats.keys())
-    logging.info(f"Satellites compatibles : {len(valid_sats)}")
-
-    visible_passes = []
-    for norad, sat in sat_objects.items():
-        sat_info = valid_sats[norad]
-        tx_list = filtered_transmitters.get(norad, [])
-        passes = list(is_visible_pass(sat, observer, ts, ts_now, ts_future, 0))
-        if not passes:
-            continue
-        current = {}
-        for p in passes:
-            if p["event"] == "rise":
-                current = {"start": p["start"]}
-            elif p["event"] == "max" and "start" in current:
-                current["peak"] = p["peak"]
-                current["max_elevation_deg"] = p["max_elevation_deg"]
-            elif p["event"] == "set" and "start" in current and "peak" in current:
-                current["end"] = p["end"]
-                if (current["end"] - current["start"]).total_seconds() < config["min_pass_duration"]:
+            # ✅ Appliquer filtre success rate si défini
+            if FILTER_TX_SUCCESS_RATE_MIN is not None:
+                if sr is None or sr < FILTER_TX_SUCCESS_RATE_MIN:
                     continue
-                if current.get("max_elevation_deg", 0) < config["min_elevation"]:
-                   continue
-                current["norad"] = norad
-                current["sat_info"] = sat_info
-                current["tx_list"] = tx_list
-                visible_passes.append(current)
-                current = {}
 
-    visible_passes.sort(key=lambda x: (x["start"], -safe_launch_date(x["sat_info"]).timestamp()))
+            transmitters_by_sat.setdefault(norad, []).append(tx)
 
-    filtered_passes = []
-    last_end = None
-    for p in visible_passes:
-        if last_end is None or p["start"] >= last_end:
-            filtered_passes.append(p)
-            last_end = p["end"]
+        # ✅ Sélection d’un seul transmetteur par satellite
+        best_transmitters = {}
+        for norad, tx_list in transmitters_by_sat.items():
+            def tri_qualite(tx):
+                sr = tx.get("success_rate") or 0
+                good = tx.get("good_count") or 0
+                return (sr, good)  # tri croissant par défaut
 
-    scheduled_count = 0
-    already_scheduled_count = 0
-    total_duration_scheduled = 0
-    total_duration_already = 0
+            meilleur = sorted(tx_list, key=tri_qualite, reverse=True)[0]
+            best_transmitters[meilleur['uuid']] = meilleur
 
-    API_SCHEDULE_ENDPOINT = f"{API_NET}/observations/"
+        logging.info(f"✅ Transmetteurs retenus après filtrage & sélection (1/sat) : {len(best_transmitters)}")
+        return best_transmitters
+
+    except Exception as e:
+        logging.error(f"Erreur récupération bulk des stats : {e}")
+        return transmitters
+
+from datetime import datetime, timezone
+
+def filtrer_passages_sans_chevauchement(passages):
+    """Filtre les passages pour éviter les chevauchements temporels.
+    Priorité : satellites récents → success_rate → good_count
+    """
+    passages = sorted(passages, key=lambda p: p['AOS'])
+    now = datetime.now(timezone.utc)
+    selection = []
+
+    for p in passages:
+        overlap = False
+        for s in selection:
+            if p['AOS'] < s['LOS'] and p['LOS'] > s['AOS']:
+                # ⛔ Chevauchement détecté → départage
+
+                def critere(passage):
+                    tx = passage.get("TRANSMITTERS", [{}])[0]
+                    sr = tx.get("success_rate") or 0
+                    gc = tx.get("good_count") or 0
+
+                    # 🎯 Bonus si lancement récent
+                    recency_score = 0
+                    if SAT_RECENT_LAUNCH_DAYS:
+                        launch_str = tx.get("launched")
+                        if launch_str:
+                            try:
+                                launch_dt = datetime.fromisoformat(launch_str.replace("Z", "+00:00"))
+                                days_since = (now - launch_dt).days
+                                if days_since <= SAT_RECENT_LAUNCH_DAYS:
+                                    recency_score = SAT_RECENT_LAUNCH_DAYS - days_since
+                            except Exception:
+                                pass
+
+                    return (recency_score, sr, gc)
+
+                meilleur = max([p, s], key=critere)
+
+                if meilleur is not s:
+                    selection.remove(s)
+                    selection.append(p)
+
+                    # ✅ Log spécial si choisi grâce à récence
+                    tx_meilleur = meilleur.get("TRANSMITTERS", [{}])[0]
+                    launch_str = tx_meilleur.get("launched")
+                    if launch_str:
+                        try:
+                            launch_dt = datetime.fromisoformat(launch_str.replace("Z", "+00:00"))
+                            days_old = (now - launch_dt).days
+                            if days_old <= SAT_RECENT_LAUNCH_DAYS:
+                                logging.info(
+                                    f"🆕 Passage '{meilleur['SAT_NAME']}' sélectionné (lancement il y a {days_old} jours)"
+                                )
+                        except:
+                            pass
+
+                overlap = True
+                break
+
+        if not overlap:
+            selection.append(p)
+
+    logging.info(f"📆 Passages sélectionnés sans chevauchement : {len(selection)} (sur {len(passages)} initiaux)")
+    return sorted(selection, key=lambda p: p['AOS'])
+
+    logging.info(f"📆 Passages sélectionnés sans chevauchement : {len(selection)} (sur {len(passages)} initiaux)")
+    return sorted(selection, key=lambda p: p['AOS'])
+
+def programmer_observations_satnogs(passages, station_id, api_token):
+    """
+    Programme les observations sur SatNOGS Network et affiche un résumé clair,
+    incluant les observations déjà planifiées (409) avec durée, success rate, etc.
+    """
+    url = "https://network.satnogs.org/api/observations/"
     headers = {
-        "Authorization": f"Token {SATNOGS_API_TOKEN}",
+        "Authorization": f"Token {api_token}",
         "Content-Type": "application/json"
     }
 
-    for p in filtered_passes:
+    durations = []
+    success_rates = []
+    satellites_programmes = set()
 
-        tx_candidates = [tx for tx in p["tx_list"] if tx.get("uuid") and len(tx["uuid"]) == 22]
-        if not tx_candidates:
-            logging.warning(f"🚫 Aucun transmetteur valide pour {p['sat_info'].get('name')}")
-            continue
+    logging.info("🚀 Lancement de la programmation des observations SatNOGS...")
 
-        tx = tx_candidates[0]
-        uuid = tx["uuid"]
-        freq = tx.get("downlink_low") or tx.get("downlink_high")
-        success_rate = get_transmitter_success_rate(uuid)
-
-        success_str = f"{success_rate:.1f}%" if success_rate is not None else "N/A"
-        duration_sec = int((p["end"] - p["start"]).total_seconds())
-        duration_str = f"{duration_sec // 60}m{duration_sec % 60:02d}s"
-        max_elev = f"{p.get('max_elevation_deg', 0):.1f}°"
-        mode = tx.get("mode", "N/A")
-
-        payload = {
-            "start": p["start"].strftime("%Y-%m-%d %H:%M:%S"),
-            "end": p["end"].strftime("%Y-%m-%d %H:%M:%S"),
-            "ground_station": int(SATNOGS_STATION_ID),
-            "transmitter_uuid": uuid,
-        }
-        if freq:
-            payload["center_frequency"] = int(freq)
-
+    for p in passages:
         try:
-            response = requests.post(API_SCHEDULE_ENDPOINT, json=[payload], headers=headers)
-            if response.status_code in [200, 201]:
-                data = response.json()
-                scheduled_count += 1
-                total_duration_scheduled += duration_sec
-                for obs in data:
-                    sat_name = p["sat_info"].get("name", "???")
-                    start = obs.get("start", payload["start"])
-                    end = obs.get("end", payload["end"])
-                    logging.info(f"✅ Observation planifiée : {sat_name} | {start} ➞ {end} | 📊 Success Rate: {success_str} | ⏱ {duration_str} | 📈 Max Elev: {max_elev} | 📡 Mode: {mode}")
+            tx = p["TRANSMITTERS"][0]
+            uuid = tx["uuid"]
+            freq = tx.get("downlink_low") or tx.get("frequency")
+            sat_name = p['SAT_NAME']
+            norad_id = p['NORAD_ID']
+
+            if not freq:
+                logging.warning(f"⚠️ Fréquence manquante pour le transmetteur {uuid}, observation ignorée.")
+                continue
+
+            duration_sec = (p["LOS"] - p["AOS"]).total_seconds()
+            if duration_sec < MIN_OBSERVATION_DURATION_SEC:
+                logging.debug(f"⏳ Passage ignoré ({sat_name}) — durée trop courte ({duration_sec:.1f}s)")
+                continue
+
+            start_str = p["AOS"].strftime("%Y-%m-%d %H:%M:%S")
+            end_str = p["LOS"].strftime("%Y-%m-%d %H:%M:%S")
+
+            payload = [{
+                "ground_station": int(station_id),
+                "transmitter_uuid": uuid,
+                "start": start_str,
+                "end": end_str,
+                "center_frequency": int(freq)
+            }]
+
+            response = requests.post(url, headers=headers, json=payload)
+
+            # 🪄 Formatage pour log
+            aos = p['AOS'].strftime('%H:%M:%S')
+            los = p['LOS'].strftime('%H:%M:%S')
+            mode = tx.get('mode', 'N/A')
+            freq_mhz = freq / 1_000_000
+            elev = p.get("MAX_ELEV", 0)
+            sr = tx.get("success_rate")
+            sr_txt = f" | ✅ Success Rate : {sr}%" if sr is not None else ""
+            duree_txt = f"{int(duration_sec // 60)} min {int(duration_sec % 60)} sec"
+
+            log_line = (
+                f"🛰️ {sat_name} | ⏰ {aos} ➡ {los} UTC | 🕒 Durée : {duree_txt} | "
+                f"📡 {mode} @ {freq_mhz:.3f} MHz | "
+                f"📈 Élév. max : {elev:.1f}°{sr_txt}"
+            )
+
+            if response.status_code in (200, 201):
+                logging.info(f"🗓️ Observation planifiée → {log_line}")
             elif response.status_code == 409:
-                already_scheduled_count += 1
-                total_duration_already += duration_sec
-                logging.info(f"🗓️ Observation déjà planifiée (conflit d'horaire) : {p['sat_info'].get('name')} | {p['start']} ➞ {p['end']} | 📊 Success Rate: {success_str} | ⏱ {duration_str} | 📈 Max Elev: {max_elev} | 📡 Mode: {mode}")
+                logging.info(f"🗂️ Observation déjà planifiée ailleurs → {log_line}")
             else:
-                logging.error(f"❌ Erreur API {response.status_code}: {response.text}")
+                logging.warning(
+                    f"❌ Échec programmation : {sat_name} ({uuid}) | "
+                    f"Code {response.status_code} | {response.text.strip()}"
+                )
+
+            # 🔢 Comptabilisation même en 409
+            if response.status_code in (200, 201, 409):
+                durations.append(duration_sec)
+                satellites_programmes.add(norad_id)
+                if sr is not None:
+                    success_rates.append(sr)
+
         except Exception as e:
-            logging.error(f"❌ Exception lors de l'appel API : {e}")
+            logging.error(f"❌ Exception durant la programmation de {p.get('SAT_NAME', '?')} : {e}")
 
-    def format_duration(seconds):
-        return f"{seconds // 60}m{seconds % 60:02d}s"
+    # 📊 Résumé final
+    if passages:
+        total_req = (passages[-1]["LOS"] - passages[0]["AOS"]).total_seconds()
+    else:
+        total_req = 0
+    total_obs = sum(durations)
+    taux_succes_moyen = round(sum(success_rates) / len(success_rates), 1) if success_rates else 0.0
 
-    total_duration_all = total_duration_scheduled + total_duration_already
-    total_observations = scheduled_count + already_scheduled_count
+    logging.info("📊 Résumé final de la programmation :")
+    logging.info(f"⏱️  Période demandée : {int(total_req // 60)} min {int(total_req % 60)} sec")
+    logging.info(f"⌛  Durée totale des observations (programmées ou déjà existantes) : {int(total_obs // 60)} min {int(total_obs % 60)} sec")
+    logging.info(f"🛰️  Nombre total de satellites concernés : {len(satellites_programmes)}")
+    logging.info(f"📈  Taux de succès moyen des transmetteurs : {taux_succes_moyen:.1f}%")
 
-    logging.info("\n📊 Résumé final :")
-    logging.info(f"  ➤ Total satellites analysés : {len(valid_sats)}")
-    logging.info(f"  ➤ Observations planifiées : {scheduled_count} | Durée cumulée : {format_duration(total_duration_scheduled)}")
-    logging.info(f"  ➤ Observations déjà planifiées : {already_scheduled_count} | Durée cumulée : {format_duration(total_duration_already)}")
-    logging.info(f"  ✅ Total des observations considérées : {total_observations} | Durée cumulée : {format_duration(total_duration_all)}")
+
+# ------------------------ SCRIPT PRINCIPAL ------------------------
+
+def main():
+    logging.info("Lancement du calcul des passages satellites visibles...")
+
+    try:
+
+        # 📡 Infos station + antennes
+        station_info, antenna_ranges = get_station_info(station_id, api_token)
+
+
+        satellites = get_satellites_actifs()
+        logging.info(f"{len(satellites)} satellites 'alive' trouvés depuis SatNOGS DB")
+
+        tle_dict = get_all_tles()
+        logging.info(f"{len(tle_dict)} TLEs récupérés depuis SatNOGS DB")
+
+        # 📡 Transmetteurs filtrés selon les critères
+        transmitters_filtres = get_all_transmitters(
+            alive_filter=FILTER_TX_ALIVE,
+            no_freq_violation=FILTER_TX_NO_FREQ_VIOLATION,
+            modes=FILTER_TX_MODES,
+            antenna_ranges=antenna_ranges
+        )
+
+        # 📈 Transmetteurs enrichis avec stats réseau
+        transmitters = enrichir_transmetteurs_avec_stats(transmitters_filtres, api_token)
+
+        logging.info(f"{len(transmitters)} émetteurs récupérés et enrichis depuis SatNOGS DB")
+
+        start_time = datetime.utcnow().replace(tzinfo=utc) + DELAI_DEPART
+        end_time = start_time + DUREE_OBSERVATION
+        logging.info(f"⏱ Observation prévue après {DELAI_DEPART_MINUTES} min pour une durée de {DUREE_OBSERVATION_HEURES} h.")
+        passages_bruts = calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_time)
+
+        passages_avec_tx = lier_transmetteurs_aux_passages(passages_bruts, transmitters)
+
+        passages_filtres = filtrer_passages_sans_chevauchement(passages_avec_tx)
+
+        afficher_passages_satellites(passages_filtres)
+
+        programmer_observations_satnogs(passages_filtres, station_id, api_token)
+
+      
+    except Exception as e:
+        logging.critical(f"Erreur critique : {e}")
 
 if __name__ == "__main__":
-    main(CONFIG)
+    main()
