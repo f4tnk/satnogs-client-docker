@@ -42,9 +42,10 @@ import logging
 
 FICHIER_ENV = 'station.env'
 SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
-DUREE_OBSERVATION_HEURES = 3  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
+DUREE_OBSERVATION_HEURES = 2  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
 DELAI_DEPART_MINUTES = 5
 MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS
+MAX_PASSAGE_DURATION_MIN = 20  # Durée maximale d'un passage en minutes
 
 LOG_FILE = 'satellite_passes.log'
 
@@ -63,8 +64,6 @@ FILTER_TX_SUCCESS_RATE_MIN = 10 # Exemple : 10 pour 10%, ou None pour désactive
 # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse)
 EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS"]  # [] pour désactiver
 
-# 🔘 Priorité aux satellites récents (en jours) avant de départager les passages
-SAT_RECENT_LAUNCH_DAYS = 60  # None pour désactiver
 
 DUREE_OBSERVATION = timedelta(hours=DUREE_OBSERVATION_HEURES)
 DELAI_DEPART = timedelta(minutes=DELAI_DEPART_MINUTES)
@@ -268,8 +267,8 @@ def calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_t
     tous_les_passages.sort(key=lambda p: p['AOS'])  # tri croissant
     return tous_les_passages
 
-def calcul_passages(tle_lines, location, start_time, end_time):
-    """Calcule les passages visibles (début à 0° jusqu'à fin à 0°), et filtre sur MAX elevation"""
+def calcul_passages(tle_lines, location, start_time, end_time, max_duration_min=MAX_PASSAGE_DURATION_MIN):
+    """Calcule les passages visibles, filtre par élévation, durée min et durée max (en minutes)"""
     try:
         ts = load.timescale()
         satellite = EarthSatellite(tle_lines[1], tle_lines[2], tle_lines[0], ts)
@@ -278,7 +277,6 @@ def calcul_passages(tle_lines, location, start_time, end_time):
         t0 = ts.from_datetime(start_time)
         t1 = ts.from_datetime(end_time)
 
-        # ✅ Trouve tous les passages, sans filtre d’élévation
         times, events = satellite.find_events(observer, t0, t1, altitude_degrees=0.0)
         passages = []
         current_pass = {}
@@ -291,28 +289,29 @@ def calcul_passages(tle_lines, location, start_time, end_time):
             elif e == 2:
                 current_pass['LOS'] = t.utc_datetime()
 
-                # ✅ Passage complet ?
                 if 'AOS' in current_pass and 'MAX' in current_pass and 'LOS' in current_pass:
                     try:
                         max_dt = current_pass['MAX'].replace(tzinfo=utc)
                         t_max = ts.utc(max_dt)
 
-                        # Calcule l'élévation max
                         difference = satellite - observer
                         topocentric = difference.at(t_max)
                         alt, az, distance = topocentric.altaz()
                         max_elev = alt.degrees
                         current_pass['MAX_ELEV'] = max_elev
 
-                        # ⛔ Ignorer si l'élévation max est < SEUIL_ELEVATION
+                        duration_sec = (current_pass['LOS'] - current_pass['AOS']).total_seconds()
+                        duration_min = duration_sec / 60
+
                         if max_elev < SEUIL_ELEVATION:
                             current_pass = {}
                             continue
-
-                        # ⛔ Ignorer si durée trop courte
-                        duration = (current_pass['LOS'] - current_pass['AOS']).total_seconds()
-                        if duration < MIN_OBSERVATION_DURATION_SEC:
-                            logging.debug(f"⏳ Passage ignoré — durée trop courte ({duration:.1f}s)")
+                        if duration_sec < MIN_OBSERVATION_DURATION_SEC:
+                            logging.debug(f"⏳ Passage ignoré — trop court ({duration_sec:.1f}s)")
+                            current_pass = {}
+                            continue
+                        if duration_min > max_duration_min:
+                            logging.debug(f"⏳ Passage ignoré — trop long ({duration_min:.1f} min)")
                             current_pass = {}
                             continue
 
@@ -320,17 +319,17 @@ def calcul_passages(tle_lines, location, start_time, end_time):
                     except Exception as e:
                         logging.warning(f"Erreur calcul élévation max : {e}")
                         current_pass = {}
-
                 else:
-                    logging.debug("Passage incomplet ignoré (AOS, MAX ou LOS manquant).")
+                    logging.debug("⛔ Passage incomplet ignoré (AOS, MAX ou LOS manquant).")
                 current_pass = {}
 
-        passages.sort(key=lambda p: p['AOS'])  # croissant
+        passages.sort(key=lambda p: p['AOS'])  # tri croissant
         return passages
 
     except Exception as e:
         logging.warning(f"Erreur calcul passage : {e}")
         return []
+
 
 def lier_transmetteurs_aux_passages(passages, transmitters):
     """Associe les transmetteurs filtrés aux passages, en ne gardant que ceux qui ont au moins un émetteur"""
@@ -486,54 +485,14 @@ from datetime import datetime, timezone
 from datetime import datetime, timezone
 
 def filtrer_passages_sans_chevauchement(passages):
-    """
-    Filtre les passages pour éviter les chevauchements temporels.
-    🥇 Priorité absolue aux satellites récents (< SAT_RECENT_LAUNCH_DAYS)
-    🥈 Sinon, choix par success_rate puis good_count
-    """
     passages = sorted(passages, key=lambda p: p['AOS'])
-    now = datetime.now(timezone.utc)
     selection = []
 
     for p in passages:
         overlap = False
         for s in selection:
+            # Seul cas d'exclusion : vrai chevauchement
             if p['AOS'] < s['LOS'] and p['LOS'] > s['AOS']:
-                # ⛔ Chevauchement détecté
-
-                def est_recent(passage):
-                    tx = passage.get("TRANSMITTERS", [{}])[0]
-                    launch_str = tx.get("launched")
-                    if launch_str:
-                        try:
-                            launch_dt = datetime.fromisoformat(launch_str.replace("Z", "+00:00"))
-                            return (now - launch_dt).days <= SAT_RECENT_LAUNCH_DAYS
-                        except Exception:
-                            return False
-                    return False
-
-                p_recent = est_recent(p)
-                s_recent = est_recent(s)
-
-                if p_recent and not s_recent:
-                    selection.remove(s)
-                    selection.append(p)
-                    logging.info(f"🆕 Priorité au satellite récent : {p['SAT_NAME']}")
-                elif not p_recent and s_recent:
-                    pass  # garder s
-                else:
-                    # Sinon départage par success_rate puis good_count
-                    def critere(passage):
-                        tx = passage.get("TRANSMITTERS", [{}])[0]
-                        sr = tx.get("success_rate") or 0
-                        gc = tx.get("good_count") or 0
-                        return (sr, gc)
-
-                    meilleur = max([p, s], key=critere)
-                    if meilleur is not s:
-                        selection.remove(s)
-                        selection.append(p)
-
                 overlap = True
                 break
 
@@ -544,11 +503,7 @@ def filtrer_passages_sans_chevauchement(passages):
     return sorted(selection, key=lambda p: p['AOS'])
 
 
-import logging
-import requests
-from datetime import datetime
-
-def programmer_observations_satnogs(passages, station_id, api_token, nb_complementaires=0):
+def programmer_observations_satnogs(passages, station_id, api_token):
     """
     Programme les observations sur SatNOGS Network et affiche un résumé clair,
     incluant les observations déjà planifiées (409) avec durée, success rate, etc.
@@ -646,71 +601,9 @@ def programmer_observations_satnogs(passages, station_id, api_token, nb_compleme
     logging.info("📊 Résumé final de la programmation :")
     logging.info(f"⏱  Période demandée : {int(total_req // 60)} min {int(total_req % 60)} sec")
     logging.info(f"⌛  Durée totale des observations (programmées ou déjà existantes) : {int(total_obs // 60)} min {int(total_obs % 60)} sec")
-    logging.info(f"🧩 Passages complémentaires ajoutés : {nb_complementaires}")
     logging.info(f"🛰️  Nombre total de satellites concernés : {len(satellites_programmes)}")
     logging.info(f"📈  Taux de succès moyen des transmetteurs : {taux_succes_moyen:.1f}%")
 
-def completer_passages_si_besoin(passages_filtres, passages_bruts, api_token, durée_cible_sec, seuils_success_rate, antenna_ranges):
-    from copy import deepcopy
-
-    total_sec = sum((p['LOS'] - p['AOS']).total_seconds() for p in passages_filtres)
-    logging.info(f"⌛ Durée totale des passages filtrés : {int(total_sec // 60)} min")
-
-    if total_sec >= durée_cible_sec:
-        return passages_filtres
-
-    passages_complémentaires = []
-
-    for seuil in seuils_success_rate:
-        logging.info(f"🔄 Phase de complétion avec seuil success_rate ≥ {seuil}%")
-
-        # 🔄 Re-télécharge TOUS les transmitters non filtrés
-        transmitters_raw = get_all_transmitters(
-            alive_filter=FILTER_TX_ALIVE,
-            no_freq_violation=FILTER_TX_NO_FREQ_VIOLATION,
-            modes=FILTER_TX_MODES,
-            antenna_ranges=antenna_ranges   # ou re-récupérer si tu veux la même plage antenne
-        )
-
-        # 🧠 Enrichir avec stats, mais appliquer le **nouveau seuil** plus bas
-        global FILTER_TX_SUCCESS_RATE_MIN
-        ancien_seuil = FILTER_TX_SUCCESS_RATE_MIN
-        FILTER_TX_SUCCESS_RATE_MIN = seuil
-        transmitters_relax = enrichir_transmetteurs_avec_stats(transmitters_raw, api_token)
-        FILTER_TX_SUCCESS_RATE_MIN = ancien_seuil  # rétablir pour éviter effet global
-
-        # ⚡ Relier les passages bruts restants
-        passages_restants = [
-            p for p in passages_bruts if p not in passages_filtres and p not in passages_complémentaires
-        ]
-        passages_avec_tx = lier_transmetteurs_aux_passages(passages_restants, transmitters_relax)
-
-        # ⚠️ Éviter chevauchement
-        passages_dispo = []
-        for p in passages_avec_tx:
-            overlap = any(p['AOS'] < s['LOS'] and p['LOS'] > s['AOS'] for s in passages_filtres + passages_complémentaires)
-            if not overlap:
-                passages_dispo.append(p)
-
-        # 🔽 Tri par success_rate décroissant
-        passages_dispo.sort(key=lambda p: p['TRANSMITTERS'][0].get("success_rate") or 0, reverse=True)
-
-        for p in passages_dispo:
-            duration = (p['LOS'] - p['AOS']).total_seconds()
-            passages_complémentaires.append(p)
-            total_sec += duration
-            if total_sec >= durée_cible_sec:
-                break
-
-        if total_sec >= durée_cible_sec:
-            break
-
-    if passages_complémentaires:
-        logging.info(f"✅ {len(passages_complémentaires)} passages complémentaires ajoutés")
-    else:
-        logging.info("❗ Aucun passage complémentaire trouvé malgré abaissement de success_rate")
-
-    return sorted(passages_filtres + passages_complémentaires, key=lambda p: p['AOS']), len(passages_complémentaires)
 
 
 # ------------------------ SCRIPT PRINCIPAL ------------------------
@@ -748,22 +641,16 @@ def main():
         logging.info(f"⏱ Observation prévue après {DELAI_DEPART_MINUTES} min pour une durée de {DUREE_OBSERVATION_HEURES} h.")
         passages_bruts = calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_time)
 
+
         passages_avec_tx = lier_transmetteurs_aux_passages(passages_bruts, transmitters)
+        
+        afficher_passages_satellites(passages_avec_tx)
 
         passages_filtres = filtrer_passages_sans_chevauchement(passages_avec_tx)
         
-        # Ajouter complétion si nécessaire
-        passages_complets, nb_complementaires = completer_passages_si_besoin(
-            passages_filtres=passages_filtres,
-            passages_bruts=passages_bruts,
-            api_token=api_token,
-            durée_cible_sec=int(DUREE_OBSERVATION.total_seconds()),
-            seuils_success_rate=[5, 0],  # essayer success rate de 5%, puis 0%
-            antenna_ranges=antenna_ranges
-        )
-        afficher_passages_satellites(passages_complets)
+        afficher_passages_satellites(passages_filtres)
 
-        programmer_observations_satnogs(passages_complets, station_id, api_token, nb_complementaires)
+        programmer_observations_satnogs(passages_filtres, station_id, api_token)
 
       
     except Exception as e:
