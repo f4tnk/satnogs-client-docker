@@ -569,12 +569,16 @@ def programmer_observations_satnogs(passages, station_id, api_token):
             tx = p["TRANSMITTERS"][0]
             uuid = tx["uuid"]
             freq = tx.get("downlink_low") or tx.get("frequency")
+            drift_ppb = tx.get("downlink_drift", 0)
             sat_name = p['SAT_NAME']
             norad_id = p['NORAD_ID']
 
             if not freq:
                 logging.warning(f"⚠️ Fréquence manquante pour le transmetteur {uuid}, observation ignorée.")
                 continue
+
+            # ✅ Appliquer drift si disponible
+            freq_drifted = freq * (1 + drift_ppb / 1_000_000_000)
 
             duration_sec = (p["LOS"] - p["AOS"]).total_seconds()
             if duration_sec < MIN_OBSERVATION_DURATION_SEC:
@@ -589,7 +593,7 @@ def programmer_observations_satnogs(passages, station_id, api_token):
                 "transmitter_uuid": uuid,
                 "start": start_str,
                 "end": end_str,
-                "center_frequency": int(freq)
+                "center_frequency": int(freq_drifted)
             }]
 
             response = requests.post(url, headers=headers, json=payload)
@@ -598,7 +602,7 @@ def programmer_observations_satnogs(passages, station_id, api_token):
             aos = p['AOS'].strftime('%H:%M:%S')
             los = p['LOS'].strftime('%H:%M:%S')
             mode = tx.get('mode', 'N/A')
-            freq_mhz = freq / 1_000_000
+            freq_mhz = freq_drifted / 1_000_000
             elev = p.get("MAX_ELEV", 0)
             sr = tx.get("success_rate")
             sr_txt = f" | ✅ Success Rate : {sr}%" if sr is not None else ""
@@ -643,6 +647,7 @@ def programmer_observations_satnogs(passages, station_id, api_token):
     logging.info(f"⌛  Durée totale des observations (programmées ou déjà existantes) : {int(total_obs // 60)} min {int(total_obs % 60)} sec")
     logging.info(f"🛰️  Nombre total de satellites concernés : {len(satellites_programmes)}")
     logging.info(f"📈  Taux de succès moyen des transmetteurs : {taux_succes_moyen:.1f}%")
+
 
 
 # ------------------------ SCRIPT PRINCIPAL ------------------------

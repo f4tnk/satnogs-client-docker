@@ -38,7 +38,7 @@ Ce projet est conçu pour fonctionner de façon autonome avec votre station SatN
 1. Clonez le dépôt :
 
 ```bash
-git clone https://github.com/votre-utilisateur/satnogs-auto-scheduler.git
+git clone https://github.com/f4tnk/satnogs-client-docker.git
 cd satnogs-auto-scheduler
 ```
 
@@ -79,7 +79,7 @@ SAT_RECENT_LAUNCH_DAYS = 30
 Lancez le script principal :
 
 ```bash
-python script.py
+python satnogs-auto-scheduler.py
 ```
 
 Les journaux seront affichés dans la console et enregistrés dans :
