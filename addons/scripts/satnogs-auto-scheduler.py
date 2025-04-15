@@ -42,7 +42,7 @@ import logging
 
 FICHIER_ENV = 'station.env'
 SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
-DUREE_OBSERVATION_HEURES = 2  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
+DUREE_OBSERVATION_HEURES = 3  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
 DELAI_DEPART_MINUTES = 5
 MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS
 
@@ -61,7 +61,7 @@ FILTER_TX_MODES = ["FSK", "MSK", "PSK"]  # Liste vide [] pour désactiver
 FILTER_TX_SUCCESS_RATE_MIN = 10 # Exemple : 10 pour 10%, ou None pour désactiver
 
 # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse)
-EXCLUDE_SAT_NAMES = ["SITRO", "KINE",]  # [] pour désactiver
+EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS"]  # [] pour désactiver
 
 # 🔘 Priorité aux satellites récents (en jours) avant de départager les passages
 SAT_RECENT_LAUNCH_DAYS = 60  # None pour désactiver
@@ -548,7 +548,7 @@ import logging
 import requests
 from datetime import datetime
 
-def programmer_observations_satnogs(passages, station_id, api_token):
+def programmer_observations_satnogs(passages, station_id, api_token, nb_complementaires=0):
     """
     Programme les observations sur SatNOGS Network et affiche un résumé clair,
     incluant les observations déjà planifiées (409) avec durée, success rate, etc.
@@ -646,46 +646,54 @@ def programmer_observations_satnogs(passages, station_id, api_token):
     logging.info("📊 Résumé final de la programmation :")
     logging.info(f"⏱  Période demandée : {int(total_req // 60)} min {int(total_req % 60)} sec")
     logging.info(f"⌛  Durée totale des observations (programmées ou déjà existantes) : {int(total_obs // 60)} min {int(total_obs % 60)} sec")
+    logging.info(f"🧩 Passages complémentaires ajoutés : {nb_complementaires}")
     logging.info(f"🛰️  Nombre total de satellites concernés : {len(satellites_programmes)}")
     logging.info(f"📈  Taux de succès moyen des transmetteurs : {taux_succes_moyen:.1f}%")
 
-def completer_passages_si_besoin(passages_filtres, transmitters_filtres, api_token, durée_cible_sec, seuils_success_rate, passages_bruts):
-    """Ajoute des passages supplémentaires si le total est inférieur à la durée cible."""
+def completer_passages_si_besoin(passages_filtres, passages_bruts, api_token, durée_cible_sec, seuils_success_rate, antenna_ranges):
     from copy import deepcopy
 
     total_sec = sum((p['LOS'] - p['AOS']).total_seconds() for p in passages_filtres)
     logging.info(f"⌛ Durée totale des passages filtrés : {int(total_sec // 60)} min")
 
     if total_sec >= durée_cible_sec:
-        return passages_filtres  # pas besoin de compléter
+        return passages_filtres
 
     passages_complémentaires = []
 
     for seuil in seuils_success_rate:
-        logging.info(f"🔄 Phase de complétion : success_rate ≥ {seuil}%")
+        logging.info(f"🔄 Phase de complétion avec seuil success_rate ≥ {seuil}%")
 
-        # ⚠️ On clone le filtre d'origine pour ne pas l’altérer
-        transmitters_relax = deepcopy(transmitters_filtres)
-        for uuid, tx in list(transmitters_relax.items()):
-            sr = tx.get("success_rate")
-            if sr is None or sr < seuil:
-                del transmitters_relax[uuid]
+        # 🔄 Re-télécharge TOUS les transmitters non filtrés
+        transmitters_raw = get_all_transmitters(
+            alive_filter=FILTER_TX_ALIVE,
+            no_freq_violation=FILTER_TX_NO_FREQ_VIOLATION,
+            modes=FILTER_TX_MODES,
+            antenna_ranges=antenna_ranges   # ou re-récupérer si tu veux la même plage antenne
+        )
 
-        # 🧠 Relier uniquement les passages restants
+        # 🧠 Enrichir avec stats, mais appliquer le **nouveau seuil** plus bas
+        global FILTER_TX_SUCCESS_RATE_MIN
+        ancien_seuil = FILTER_TX_SUCCESS_RATE_MIN
+        FILTER_TX_SUCCESS_RATE_MIN = seuil
+        transmitters_relax = enrichir_transmetteurs_avec_stats(transmitters_raw, api_token)
+        FILTER_TX_SUCCESS_RATE_MIN = ancien_seuil  # rétablir pour éviter effet global
+
+        # ⚡ Relier les passages bruts restants
         passages_restants = [
-            p for p in passages_bruts if p not in passages_filtres
+            p for p in passages_bruts if p not in passages_filtres and p not in passages_complémentaires
         ]
         passages_avec_tx = lier_transmetteurs_aux_passages(passages_restants, transmitters_relax)
 
-        # 🔎 Supprime les chevauchements avec ceux déjà retenus
+        # ⚠️ Éviter chevauchement
         passages_dispo = []
         for p in passages_avec_tx:
             overlap = any(p['AOS'] < s['LOS'] and p['LOS'] > s['AOS'] for s in passages_filtres + passages_complémentaires)
             if not overlap:
                 passages_dispo.append(p)
 
-        # 🧩 Tri par success_rate
-        passages_dispo.sort(key=lambda p: p['TRANSMITTERS'][0].get('success_rate') or 0, reverse=True)
+        # 🔽 Tri par success_rate décroissant
+        passages_dispo.sort(key=lambda p: p['TRANSMITTERS'][0].get("success_rate") or 0, reverse=True)
 
         for p in passages_dispo:
             duration = (p['LOS'] - p['AOS']).total_seconds()
@@ -700,9 +708,10 @@ def completer_passages_si_besoin(passages_filtres, transmitters_filtres, api_tok
     if passages_complémentaires:
         logging.info(f"✅ {len(passages_complémentaires)} passages complémentaires ajoutés")
     else:
-        logging.info("❗ Aucun passage complémentaire trouvé")
+        logging.info("❗ Aucun passage complémentaire trouvé malgré abaissement de success_rate")
 
-    return sorted(passages_filtres + passages_complémentaires, key=lambda p: p['AOS'])
+    return sorted(passages_filtres + passages_complémentaires, key=lambda p: p['AOS']), len(passages_complémentaires)
+
 
 # ------------------------ SCRIPT PRINCIPAL ------------------------
 
@@ -743,15 +752,18 @@ def main():
 
         passages_filtres = filtrer_passages_sans_chevauchement(passages_avec_tx)
         
-        passages_complets = completer_passages_si_besoin(
-            passages_filtres, transmitters, api_token,
+        # Ajouter complétion si nécessaire
+        passages_complets, nb_complementaires = completer_passages_si_besoin(
+            passages_filtres=passages_filtres,
+            passages_bruts=passages_bruts,
+            api_token=api_token,
             durée_cible_sec=int(DUREE_OBSERVATION.total_seconds()),
-            seuils_success_rate=[5, 0],
-            passages_bruts=passages_bruts
+            seuils_success_rate=[5, 0],  # essayer success rate de 5%, puis 0%
+            antenna_ranges=antenna_ranges
         )
-        afficher_passages_satellites(passages_filtres)
+        afficher_passages_satellites(passages_complets)
 
-        programmer_observations_satnogs(passages_filtres, station_id, api_token)
+        programmer_observations_satnogs(passages_complets, station_id, api_token, nb_complementaires)
 
       
     except Exception as e:
