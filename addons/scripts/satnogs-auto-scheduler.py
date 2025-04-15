@@ -41,28 +41,17 @@ import logging
 # ------------------------ CONFIGURATION ------------------------
 
 FICHIER_ENV = 'station.env'
+LOG_FILE = 'satellite_passes.log'
 SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
 DUREE_OBSERVATION_HEURES = 2  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
-DELAI_DEPART_MINUTES = 5
-MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS
+DELAI_DEPART_MINUTES = 5 # Exigence API SatNOGS Network
+MIN_OBSERVATION_DURATION_SEC = 180  # Exigence API SatNOGS Network
 MAX_PASSAGE_DURATION_MIN = 20  # Durée maximale d'un passage en minutes
-
-LOG_FILE = 'satellite_passes.log'
-
-# 🔘 Filtrer uniquement les transmetteurs actifs (alive == True)
-FILTER_TX_ALIVE = True  # ou None pour désactiver le filtre
-
-# 🔘 Exclure les transmetteurs avec violation de fréquence
-FILTER_TX_NO_FREQ_VIOLATION = True  # False pour désactiver le filtre
-
-# 🔘 Filtrer par mode (ex: 'USB', 'CW', 'FM'), insensible à la casse et match partiel
-FILTER_TX_MODES = ["FSK", "MSK", "PSK"]  # Liste vide [] pour désactiver
-
-# 🔘 Filtrer les transmetteurs selon un success_rate minimum (en %)
-FILTER_TX_SUCCESS_RATE_MIN = 10 # Exemple : 10 pour 10%, ou None pour désactiver
-
-# 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse)
-EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS"]  # [] pour désactiver
+FILTER_TX_ALIVE = True  # 🔘 Filtrer uniquement les transmetteurs actifs True
+FILTER_TX_NO_FREQ_VIOLATION = True  # 🔘 Exclure les transmetteurs avec violation de fréquence True
+FILTER_TX_MODES = ["FSK", "MSK", "PSK"]  # 🔘 Filtrer par mode (ex: 'USB', 'CW', 'FM'), insensible à la casse et match partiel / Liste vide [] pour désactiver
+FILTER_TX_SUCCESS_RATE_MIN = 10 # # 🔘 Filtrer les transmetteurs selon un success_rate minimum (en %) ou None pour désactivé
+EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS"]  # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse) / [] pour désactiver
 
 
 DUREE_OBSERVATION = timedelta(hours=DUREE_OBSERVATION_HEURES)
