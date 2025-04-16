@@ -41,7 +41,7 @@ import logging
 # ------------------------ CONFIGURATION ------------------------
 
 FICHIER_ENV = 'station.env'
-LOG_FILE = 'satellite_passes.log'
+LOG_FILE = 'satnogs-auto-scheduler.log'
 SEUIL_ELEVATION = 15  # Angle minimum pour qu'un passage soit considéré visible
 DUREE_OBSERVATION_HEURES = 1  # ⬅️ Indiquer ici le nombre d'heures souhaitées pour les observations
 DELAI_DEPART_MINUTES = 5 # Exigence API SatNOGS Network
@@ -53,7 +53,7 @@ FILTER_TX_STATUS = "active"  # 🔘 Filtrer sur le champ 'status' des transmette
 FILTER_TX_NO_FREQ_VIOLATION = True  # 🔘 Exclure les transmetteurs avec violation de fréquence True : True / None
 FILTER_TX_MODES = ["FSK", "MSK", "PSK"]  # 🔘 Filtrer par mode (ex: 'USB', 'CW', 'FM'), insensible à la casse et match partiel / Liste vide [] pour désactiver
 FILTER_TX_SUCCESS_RATE_MIN = 25 # # 🔘 Filtrer les transmetteurs selon un success_rate minimum (en %) ou None pour désactivé
-EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS", "ION-MK"]  # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse) : ["ISS", "KINE"] / None ou [] pour ignorer
+EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS", "ION-MK", "DOSAAF"]  # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse) : ["ISS", "KINE"] / None ou [] pour ignorer
 
 
 DUREE_OBSERVATION = timedelta(hours=DUREE_OBSERVATION_HEURES)
@@ -508,10 +508,11 @@ def filtrer_passages_sans_chevauchement(passages):
     return sorted(selection, key=lambda p: p['AOS'])
 
 
-def programmer_observations_satnogs(passages, station_id, api_token):
+def programmer_observations_satnogs(passages, station_id, api_token, start_time, end_time):
     """
     Programme les observations sur SatNOGS Network et affiche un résumé clair,
-    incluant les observations déjà planifiées (409) avec durée, success rate, etc.
+    incluant les observations déjà planifiées (409), la durée, les taux de succès,
+    le nombre de satellites et transmetteurs uniques, etc.
     """
     url = "https://network.satnogs.org/api/observations/"
     headers = {
@@ -522,6 +523,7 @@ def programmer_observations_satnogs(passages, station_id, api_token):
     durations = []
     success_rates = []
     satellites_programmes = set()
+    transmetteurs_programmes = set()
 
     logging.info("🚀 Lancement de la programmation des observations SatNOGS...")
 
@@ -539,7 +541,6 @@ def programmer_observations_satnogs(passages, station_id, api_token):
             drift_ppb = tx.get("downlink_drift")
             freq_mhz = freq / 1_000_000 if freq else None
 
-            # Affichage log uniquement : drift appliqué pour information
             drifted_freq_mhz = freq_mhz
             if freq and drift_ppb:
                 drifted_freq_mhz = (freq * (1 + drift_ppb / 1e9)) / 1_000_000
@@ -552,7 +553,6 @@ def programmer_observations_satnogs(passages, station_id, api_token):
             start_str = p["AOS"].strftime("%Y-%m-%d %H:%M:%S")
             end_str = p["LOS"].strftime("%Y-%m-%d %H:%M:%S")
 
-            # ❌ Pas de center_frequency → SatNOGS décide
             payload = [{
                 "ground_station": int(station_id),
                 "transmitter_uuid": uuid,
@@ -562,7 +562,6 @@ def programmer_observations_satnogs(passages, station_id, api_token):
 
             response = requests.post(url, headers=headers, json=payload)
 
-            # 🪄 Log formaté
             aos = p['AOS'].strftime('%H:%M:%S')
             los = p['LOS'].strftime('%H:%M:%S')
             sr_txt = f" | ✅ Success Rate : {sr}%" if sr is not None else ""
@@ -585,21 +584,18 @@ def programmer_observations_satnogs(passages, station_id, api_token):
                     f"Code {response.status_code} | {response.text.strip()}"
                 )
 
-            # ✅ Stats cumulées même en cas de doublon (409)
             if response.status_code in (200, 201, 409):
                 durations.append(duration_sec)
                 satellites_programmes.add(norad_id)
+                transmetteurs_programmes.add(uuid)
                 if sr is not None:
                     success_rates.append(sr)
 
         except Exception as e:
             logging.error(f"❌ Exception durant la programmation de {p.get('SAT_NAME', '?')} : {e}")
 
-    # 📊 Résumé final
-    if passages:
-        total_req = (passages[-1]["LOS"] - passages[0]["AOS"]).total_seconds()
-    else:
-        total_req = 0
+    # ✅ Résumé final
+    total_req = (end_time - start_time).total_seconds()
     total_obs = sum(durations)
     taux_succes_moyen = round(sum(success_rates) / len(success_rates), 1) if success_rates else 0.0
 
@@ -607,7 +603,11 @@ def programmer_observations_satnogs(passages, station_id, api_token):
     logging.info(f"⏱  Période demandée : {int(total_req // 60)} min {int(total_req % 60)} sec")
     logging.info(f"⌛  Durée totale des observations (programmées ou déjà existantes) : {int(total_obs // 60)} min {int(total_obs % 60)} sec")
     logging.info(f"🛰️  Nombre total de satellites concernés : {len(satellites_programmes)}")
+    logging.info(f"🔢 Nombre de satellites uniques : {len(set(satellites_programmes))}")
+    logging.info(f"📡 Nombre de transmetteurs uniques : {len(set(transmetteurs_programmes))}")
     logging.info(f"📈  Taux de succès moyen des transmetteurs : {taux_succes_moyen:.1f}%")
+
+
 
 
 def get_paginated_endpoint(url,
@@ -765,8 +765,9 @@ def main():
         # ============================================================
         # 🗓️ 10. Programmation des observations
         # ============================================================
-        programmer_observations_satnogs(passages_filtres, station_id, api_token)
+        programmer_observations_satnogs(passages_filtres, station_id, api_token, start_time, end_time)
 
+        
     except Exception as e:
         logging.critical(f"💥 Erreur critique durant le traitement : {e}")
 
