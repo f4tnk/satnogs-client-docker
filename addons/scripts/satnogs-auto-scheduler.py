@@ -56,7 +56,6 @@ FILTER_TX_SUCCESS_RATE_MIN = 25 # # 🔘 Filtrer les transmetteurs selon un succ
 EXCLUDE_SAT_NAMES = ["SITRO", "KINE", "ISS", "ION-MK"]  # 🔘 Liste de mots-clés dans les noms de satellites à exclure (insensible à la casse) : ["ISS", "KINE"] / None ou [] pour ignorer
 
 
-
 DUREE_OBSERVATION = timedelta(hours=DUREE_OBSERVATION_HEURES)
 DELAI_DEPART = timedelta(minutes=DELAI_DEPART_MINUTES)
 
@@ -672,55 +671,105 @@ def get_paginated_endpoint(url,
 # ------------------------ SCRIPT PRINCIPAL ------------------------
 
 def main():
-    logging.info("Lancement du calcul des passages satellites visibles...")
+    logging.info("🚀 Lancement du calcul des passages satellites visibles...")
 
     try:
-
-        # 📡 Infos station + antennes
+        # ============================================================
+        # 📡 1. Récupération des infos de la station (et antennes)
+        # ============================================================
         station_info, antenna_ranges = get_station_info(station_id, api_token)
+        if not station_info:
+            logging.critical("❌ Impossible de récupérer les infos de la station. Arrêt.")
+            return
 
+        # ============================================================
+        # 🛰️ 2. Récupération des satellites filtrés (status + exclusion nom)
+        # ============================================================
         satellites = get_satellites_actifs(
             status_filter=FILTER_SAT_STATUS,
             exclude_names=EXCLUDE_SAT_NAMES
         )
+        if not satellites:
+            logging.critical("❌ Aucun satellite valide trouvé. Arrêt.")
+            return
 
-        logging.info(f"{len(satellites)} satellites 'alive' trouvés depuis SatNOGS DB")
+        logging.info(f"✅ {len(satellites)} satellites retenus après filtrage.")
 
+        # ============================================================
+        # 📄 3. Récupération des TLEs pour les satellites
+        # ============================================================
         tle_dict = get_all_tles()
-        logging.info(f"{len(tle_dict)} TLEs récupérés depuis SatNOGS DB")
+        if not tle_dict:
+            logging.critical("❌ Impossible de récupérer les TLEs. Arrêt.")
+            return
+        logging.info(f"✅ {len(tle_dict)} TLEs récupérés.")
 
-        # 📡 Transmetteurs filtrés selon les critères
+        # ============================================================
+        # 📡 4. Récupération et filtrage des transmetteurs
+        # ============================================================
         transmitters_filtres = get_all_transmitters(
             alive_filter=FILTER_TX_ALIVE,
+            status_filter=FILTER_TX_STATUS,
             no_freq_violation=FILTER_TX_NO_FREQ_VIOLATION,
             modes=FILTER_TX_MODES,
             antenna_ranges=antenna_ranges
         )
+        if not transmitters_filtres:
+            logging.critical("❌ Aucun transmetteur retenu après filtrage. Arrêt.")
+            return
 
-        # 📈 Transmetteurs enrichis avec stats réseau
+        # ============================================================
+        # 📈 5. Enrichissement des transmetteurs avec stats réseau
+        # ============================================================
         transmitters = enrichir_transmetteurs_avec_stats(transmitters_filtres, api_token)
+        if not transmitters:
+            logging.critical("❌ Enrichissement des transmetteurs échoué. Arrêt.")
+            return
+        logging.info(f"✅ {len(transmitters)} transmetteurs enrichis.")
 
-        logging.info(f"{len(transmitters)} émetteurs récupérés et enrichis depuis SatNOGS DB")
-
+        # ============================================================
+        # ⏱️ 6. Calcul de la période d’observation
+        # ============================================================
         start_time = datetime.utcnow().replace(tzinfo=utc) + DELAI_DEPART
         end_time = start_time + DUREE_OBSERVATION
-        logging.info(f"⏱ Observation prévue après {DELAI_DEPART_MINUTES} min pour une durée de {DUREE_OBSERVATION_HEURES} h.")
+        logging.info(f"🕒 Observation de {start_time} ➡ {end_time} UTC")
+
+        # ============================================================
+        # 📉 7. Calcul des passages visibles
+        # ============================================================
         passages_bruts = calculer_tous_les_passages(satellites, tle_dict, position, start_time, end_time)
+        if not passages_bruts:
+            logging.warning("⚠️ Aucun passage trouvé dans la période définie.")
+            return
 
-
+        # ============================================================
+        # 🔗 8. Lier les transmetteurs aux passages
+        # ============================================================
         passages_avec_tx = lier_transmetteurs_aux_passages(passages_bruts, transmitters)
-        
+        if not passages_avec_tx:
+            logging.warning("⚠️ Aucun passage avec transmetteur associé.")
+            return
+
         afficher_passages_satellites(passages_avec_tx)
 
+        # ============================================================
+        # 📆 9. Filtrage des passages sans chevauchement
+        # ============================================================
         passages_filtres = filtrer_passages_sans_chevauchement(passages_avec_tx)
-        
+        if not passages_filtres:
+            logging.warning("⚠️ Aucun passage retenu après suppression des chevauchements.")
+            return
+
         afficher_passages_satellites(passages_filtres)
 
+        # ============================================================
+        # 🗓️ 10. Programmation des observations
+        # ============================================================
         programmer_observations_satnogs(passages_filtres, station_id, api_token)
 
-      
     except Exception as e:
-        logging.critical(f"Erreur critique : {e}")
+        logging.critical(f"💥 Erreur critique durant le traitement : {e}")
+
 
 if __name__ == "__main__":
     main()
